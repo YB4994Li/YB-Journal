@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+
 # Trading Journal
 
 Trading Journal is a standalone full-stack application designed to help traders manage multiple trading accounts, import trading history, organize trades, and review performance through structured statistics and visualizations.
@@ -158,14 +160,14 @@ Screenshots are stored on the server filesystem under `uploads/screenshots`. CSV
 
 ## Main frontend routes
 
-| Route | Purpose |
-| --- | --- |
-| `/` | Journal for the account and optional phase selected through query parameters |
-| `/accounts` | Accounts Center overview |
-| `/accounts/library` | Trading Library, defaulting to Strategies |
-| `/accounts/library/strategies` | Strategy management |
-| `/accounts/library/timeframes` | Canonical timeframe reference |
-| `/trading-library` | Redirects to `/accounts/library` |
+| Route                          | Purpose                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `/`                            | Journal for the account and optional phase selected through query parameters |
+| `/accounts`                    | Accounts Center overview                                                     |
+| `/accounts/library`            | Trading Library, defaulting to Strategies                                    |
+| `/accounts/library/strategies` | Strategy management                                                          |
+| `/accounts/library/timeframes` | Canonical timeframe reference                                                |
+| `/trading-library`             | Redirects to `/accounts/library`                                             |
 
 An account card opens the journal with `accountId` and, when applicable, `phaseId` query parameters.
 
@@ -254,14 +256,14 @@ VITE_API_URL=http://localhost:5000/api
 
 Environment variables:
 
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `DATABASE_URL` | Yes | None | PostgreSQL connection string used by Prisma |
-| `PORT` | No | `5000` | Express API port |
-| `CLIENT_URL` | No | `http://localhost:5173` | Allowed client origin for CORS |
-| `MAX_FILE_SIZE` | No | `5242880` | Maximum CSV or screenshot upload size in bytes |
-| `NODE_ENV` | No | Development behavior | Enables production static-file cache behavior when set to `production` |
-| `VITE_API_URL` | No | `http://localhost:5000/api` | API base URL used by the React client |
+| Variable        | Required | Default                     | Description                                                            |
+| --------------- | -------- | --------------------------- | ---------------------------------------------------------------------- |
+| `DATABASE_URL`  | Yes      | None                        | PostgreSQL connection string used by Prisma                            |
+| `PORT`          | No       | `5000`                      | Express API port                                                       |
+| `CLIENT_URL`    | No       | `http://localhost:5173`     | Allowed client origin for CORS                                         |
+| `MAX_FILE_SIZE` | No       | `5242880`                   | Maximum CSV or screenshot upload size in bytes                         |
+| `NODE_ENV`      | No       | Development behavior        | Enables production static-file cache behavior when set to `production` |
+| `VITE_API_URL`  | No       | `http://localhost:5000/api` | API base URL used by the React client                                  |
 
 `DATABASE_URL` is validated when the backend starts. Keep real credentials out of committed environment example files.
 
@@ -303,28 +305,28 @@ Development URLs:
 
 ### Root scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Run the Express API and Vite client concurrently |
-| `npm run install:all` | Install root, server, and client dependencies |
-| `npm run build` | Build the production client |
+| Command               | Description                                      |
+| --------------------- | ------------------------------------------------ |
+| `npm run dev`         | Run the Express API and Vite client concurrently |
+| `npm run install:all` | Install root, server, and client dependencies    |
+| `npm run build`       | Build the production client                      |
 
 ### Server scripts
 
 Run from `server/` or use `npm run <script> --prefix server` from the root.
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Run the API with nodemon |
-| `npm start` | Run the API with Node.js |
-| `npm test` | Run backend tests with Node's test runner |
-| `npm run check` | Syntax-check the server entry point |
-| `npm run prisma:generate` | Generate Prisma Client |
-| `npm run prisma:migrate` | Create/apply a development migration named `init` |
-| `npm run prisma:deploy` | Apply existing migrations |
-| `npm run prisma:seed` | Seed example data |
-| `npm run prisma:studio` | Open Prisma Studio |
-| `npm run db:check` | Verify the PostgreSQL connection |
+| Command                   | Description                                       |
+| ------------------------- | ------------------------------------------------- |
+| `npm run dev`             | Run the API with nodemon                          |
+| `npm start`               | Run the API with Node.js                          |
+| `npm test`                | Run backend tests with Node's test runner         |
+| `npm run check`           | Syntax-check the server entry point               |
+| `npm run prisma:generate` | Generate Prisma Client                            |
+| `npm run prisma:migrate`  | Create/apply a development migration named `init` |
+| `npm run prisma:deploy`   | Apply existing migrations                         |
+| `npm run prisma:seed`     | Seed example data                                 |
+| `npm run prisma:studio`   | Open Prisma Studio                                |
+| `npm run db:check`        | Verify the PostgreSQL connection                  |
 
 Additional scripts:
 
@@ -335,10 +337,10 @@ node scripts/reportTradingLibraryMigration.js
 
 ### Client scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Run the Vite development server |
-| `npm run build` | Build production assets |
+| Command           | Description                          |
+| ----------------- | ------------------------------------ |
+| `npm run dev`     | Run the Vite development server      |
+| `npm run build`   | Build production assets              |
 | `npm run preview` | Preview a completed production build |
 
 Client utility tests can be run directly:
@@ -400,7 +402,7 @@ Examples treated as one key:
 
 - `Pullback`
 - `pullback`
-- ` PULLBACK `
+- `PULLBACK`
 
 `Pullback` and `Pulback` remain distinct.
 
@@ -419,71 +421,71 @@ All API routes use the `/api` prefix.
 
 ### System
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/health` | API health check |
+| Method | Endpoint  | Purpose          |
+| ------ | --------- | ---------------- |
+| `GET`  | `/health` | API health check |
 
 ### Accounts, analytics, imports, and account trades
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/accounts` | List accounts; archived accounts are excluded unless `includeArchived=true` |
-| `POST` | `/accounts` | Create a real or funded account |
-| `GET` | `/accounts/:id` | Retrieve one account |
-| `PUT` | `/accounts/:id` | Update one account |
-| `PATCH` | `/accounts/:accountId` | Partially update one account |
-| `DELETE` | `/accounts/:id` | Permanently delete an account and cascaded data |
-| `POST` | `/accounts/:id/archive` | Archive an account |
-| `POST` | `/accounts/:id/restore` | Restore an archived account |
-| `GET` | `/accounts/:id/statistics` | Account or phase statistics |
-| `GET` | `/accounts/:id/balance-history` | Realized balance history |
-| `GET` | `/accounts/:id/markets` | Distinct account/phase markets |
-| `GET` | `/accounts/:id/analytics/markets` | Market distribution analytics |
-| `GET` | `/accounts/:id/journal/filter-options` | Dynamic market, strategy, and timeframe options |
-| `GET` | `/accounts/:accountId/trades` | Paginated account/phase trades |
-| `GET` | `/accounts/:accountId/trades/ids` | IDs matching current journal filters |
-| `POST` | `/accounts/:accountId/trades` | Create a trade |
-| `POST` | `/accounts/:accountId/trades/import/preview` | Parse and preview an uploaded CSV |
-| `POST` | `/accounts/:accountId/trades/import/confirm` | Import confirmed valid rows |
-| `GET` | `/accounts/:accountId/phases` | List funded phases |
-| `POST` | `/accounts/:accountId/phases` | Add a funded phase |
+| Method   | Endpoint                                     | Purpose                                                                     |
+| -------- | -------------------------------------------- | --------------------------------------------------------------------------- |
+| `GET`    | `/accounts`                                  | List accounts; archived accounts are excluded unless `includeArchived=true` |
+| `POST`   | `/accounts`                                  | Create a real or funded account                                             |
+| `GET`    | `/accounts/:id`                              | Retrieve one account                                                        |
+| `PUT`    | `/accounts/:id`                              | Update one account                                                          |
+| `PATCH`  | `/accounts/:accountId`                       | Partially update one account                                                |
+| `DELETE` | `/accounts/:id`                              | Permanently delete an account and cascaded data                             |
+| `POST`   | `/accounts/:id/archive`                      | Archive an account                                                          |
+| `POST`   | `/accounts/:id/restore`                      | Restore an archived account                                                 |
+| `GET`    | `/accounts/:id/statistics`                   | Account or phase statistics                                                 |
+| `GET`    | `/accounts/:id/balance-history`              | Realized balance history                                                    |
+| `GET`    | `/accounts/:id/markets`                      | Distinct account/phase markets                                              |
+| `GET`    | `/accounts/:id/analytics/markets`            | Market distribution analytics                                               |
+| `GET`    | `/accounts/:id/journal/filter-options`       | Dynamic market, strategy, and timeframe options                             |
+| `GET`    | `/accounts/:accountId/trades`                | Paginated account/phase trades                                              |
+| `GET`    | `/accounts/:accountId/trades/ids`            | IDs matching current journal filters                                        |
+| `POST`   | `/accounts/:accountId/trades`                | Create a trade                                                              |
+| `POST`   | `/accounts/:accountId/trades/import/preview` | Parse and preview an uploaded CSV                                           |
+| `POST`   | `/accounts/:accountId/trades/import/confirm` | Import confirmed valid rows                                                 |
+| `GET`    | `/accounts/:accountId/phases`                | List funded phases                                                          |
+| `POST`   | `/accounts/:accountId/phases`                | Add a funded phase                                                          |
 
 ### Trades
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/trades/csv-template` | Download the application CSV template |
-| `DELETE` | `/trades/bulk` | Delete selected trades |
-| `GET` | `/trades/:id` | Retrieve one trade |
-| `PUT` | `/trades/:id` | Update one trade |
-| `DELETE` | `/trades/:id` | Delete one trade |
-| `POST` | `/trades/:id/duplicate` | Duplicate one trade without its screenshot |
-| `POST` | `/trades/:id/screenshot` | Upload or replace a screenshot |
-| `DELETE` | `/trades/:id/screenshot` | Remove a screenshot |
+| Method   | Endpoint                 | Purpose                                    |
+| -------- | ------------------------ | ------------------------------------------ |
+| `GET`    | `/trades/csv-template`   | Download the application CSV template      |
+| `DELETE` | `/trades/bulk`           | Delete selected trades                     |
+| `GET`    | `/trades/:id`            | Retrieve one trade                         |
+| `PUT`    | `/trades/:id`            | Update one trade                           |
+| `DELETE` | `/trades/:id`            | Delete one trade                           |
+| `POST`   | `/trades/:id/duplicate`  | Duplicate one trade without its screenshot |
+| `POST`   | `/trades/:id/screenshot` | Upload or replace a screenshot             |
+| `DELETE` | `/trades/:id/screenshot` | Remove a screenshot                        |
 
 ### Funded phases
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/phases/:phaseId` | Retrieve a phase |
-| `PATCH` | `/phases/:phaseId` | Update a phase |
-| `DELETE` | `/phases/:phaseId` | Delete a phase and its trades |
-| `POST` | `/phases/:phaseId/pass` | Mark a phase passed |
-| `POST` | `/phases/:phaseId/fail` | Mark a phase failed |
-| `POST` | `/phases/:phaseId/activate` | Activate a phase |
+| Method   | Endpoint                    | Purpose                       |
+| -------- | --------------------------- | ----------------------------- |
+| `GET`    | `/phases/:phaseId`          | Retrieve a phase              |
+| `PATCH`  | `/phases/:phaseId`          | Update a phase                |
+| `DELETE` | `/phases/:phaseId`          | Delete a phase and its trades |
+| `POST`   | `/phases/:phaseId/pass`     | Mark a phase passed           |
+| `POST`   | `/phases/:phaseId/fail`     | Mark a phase failed           |
+| `POST`   | `/phases/:phaseId/activate` | Activate a phase              |
 
 ### Strategies
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/strategies` | List active or archived strategies |
-| `GET` | `/strategies/:id` | Retrieve one strategy |
-| `POST` | `/strategies` | Create or reuse a normalized strategy |
-| `PATCH` | `/strategies/:id` | Rename or update a strategy |
-| `DELETE` | `/strategies/:id` | Delete an unused strategy |
-| `POST` | `/strategies/:id/archive` | Archive a strategy |
-| `POST` | `/strategies/:id/restore` | Restore a strategy |
-| `POST` | `/strategies/merge` | Merge a source strategy into a target strategy |
+| Method   | Endpoint                  | Purpose                                        |
+| -------- | ------------------------- | ---------------------------------------------- |
+| `GET`    | `/strategies`             | List active or archived strategies             |
+| `GET`    | `/strategies/:id`         | Retrieve one strategy                          |
+| `POST`   | `/strategies`             | Create or reuse a normalized strategy          |
+| `PATCH`  | `/strategies/:id`         | Rename or update a strategy                    |
+| `DELETE` | `/strategies/:id`         | Delete an unused strategy                      |
+| `POST`   | `/strategies/:id/archive` | Archive a strategy                             |
+| `POST`   | `/strategies/:id/restore` | Restore a strategy                             |
+| `POST`   | `/strategies/merge`       | Merge a source strategy into a target strategy |
 
 API success responses generally use:
 
@@ -586,4 +588,4 @@ Do not create a migration unless the Prisma schema changes. Preserve existing ac
 
 ## License
 
-This repository does not currently include a license file. Add an explicit license before redistributing or accepting external contributions.
+# This repository does not currently include a license file. Add an explicit license before redistributing or accepting external contributions.
