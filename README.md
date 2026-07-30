@@ -1,2 +1,2 @@
 # YB-Journal
-Modern trading journal built with React, Node.js, Express, PostgreSQL, and Prisma.
+A modern trading journal designed to analyze performance, manage trading accounts, and improve consistency through detailed analytics.
