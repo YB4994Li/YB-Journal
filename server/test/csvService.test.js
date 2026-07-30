@@ -47,7 +47,9 @@ test('maps a winning Exness trade into the application model', () => {
   assert.equal(row.data.takeProfit, '2390');
   assert.equal(row.data.lotSize, '0.1');
   assert.equal(row.data.plannedRR, 1.86);
-  assert.equal(row.data.realizedRMultiple, 1.05);
+  assert.equal(row.data.riskAmount, null);
+  assert.equal(row.data.riskPercentage, null);
+  assert.equal(row.data.realizedRMultiple, null);
   assert.equal(row.data.emotion, null);
 });
 

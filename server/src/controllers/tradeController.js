@@ -38,7 +38,8 @@ export async function update(req, res) {
   if(req.body.strategyId&&!strategy)throw new ApiError(422,'Selected strategy does not exist');
   normalized.strategyId=strategy?.id||null;
   normalized.strategyName=null;
-  Object.assign(normalized, calculateTradeAnalytics(normalized, { balanceBeforeTrade: normalized.balanceBeforeTrade }));
+  const context=phaseId?await prisma.accountPhase.findUnique({where:{id:phaseId},select:{initialBalance:true,breakEvenThresholdPercent:true,account:{select:{currency:true}}}}):await prisma.account.findUnique({where:{id:existing.accountId},select:{initialCapital:true,breakEvenThresholdPercent:true,currency:true}});
+  Object.assign(normalized, calculateTradeAnalytics(normalized, { balanceBeforeTrade: normalized.balanceBeforeTrade,accountCurrency:context.account?.currency??context.currency,initialCapital:Number(context.initialBalance??context.initialCapital),breakEvenThresholdPercent:Number(context.breakEvenThresholdPercent) }));
   const trade = await prisma.trade.update({ where: { id: existing.id }, data: { ...normalized, phaseId },include:{strategy:{select:{id:true,name:true,isArchived:true}}} });
   await Promise.all([syncPhaseBalance(existing.phaseId), syncPhaseBalance(phaseId)]);
   success(res, serializeTrade(trade), 'Trade updated successfully');

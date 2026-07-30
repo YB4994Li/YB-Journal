@@ -4,7 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { getStatistics, getBalanceHistory } from '../services/statisticsService.js';
 import { getJournalFilterOptions, getMarketOptions, getMarketsAnalytics } from '../services/marketAnalyticsService.js';
 
-const decimalKeys = ['initialCapital', 'accountSize', 'initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage'];
+const decimalKeys = ['initialCapital', 'accountSize', 'initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage','breakEvenThresholdPercent'];
 const serialize = (value) => {
   if (!value) return value;
   if (Array.isArray(value)) return value.map(serialize);
@@ -21,6 +21,7 @@ const phaseData = (phase, orderIndex) => ({
   maximumLossPercentage: phase.maximumLossPercentage === '' || phase.maximumLossPercentage == null ? null : String(phase.maximumLossPercentage),
   dailyLossLimitPercentage: phase.dailyLossLimitPercentage === '' || phase.dailyLossLimitPercentage == null ? null : String(phase.dailyLossLimitPercentage),
   minimumTradingDays: phase.minimumTradingDays === '' || phase.minimumTradingDays == null ? null : Number(phase.minimumTradingDays),
+  breakEvenThresholdPercent:String(phase.breakEvenThresholdPercent??0.05),
   startDate: phase.status === 'ACTIVE' ? new Date() : null, notes: text(phase.notes)
 });
 
@@ -50,7 +51,7 @@ export async function createAccount(req, res) {
       initialCapital: String(funded ? req.body.accountSize : req.body.initialCapital),
       accountSize: funded ? String(req.body.accountSize) : null,
       broker: text(req.body.broker), propFirm: funded ? text(req.body.propFirm) : null,
-      platform: text(req.body.platform), notes: text(req.body.notes), externalReference:text(req.body.externalReference),
+      platform: text(req.body.platform), notes: text(req.body.notes), externalReference:text(req.body.externalReference),breakEvenThresholdPercent:String(req.body.breakEvenThresholdPercent??0.05),
       phases: funded ? { create: phases.map(phaseData) } : undefined
     },
     include: { phases: { orderBy: { orderIndex: 'asc' } }, _count: { select: { trades: true } } }
@@ -66,6 +67,7 @@ export async function updateAccount(req, res) {
   for (const key of ['status','displayOrder']) if (key in req.body) data[key]=key==='displayOrder'?Number(req.body[key]):req.body[key];
   if (req.body.initialCapital != null && existing.accountType === 'REAL') data.initialCapital = String(req.body.initialCapital);
   if (req.body.accountSize != null && existing.accountType === 'FUNDED') data.accountSize = String(req.body.accountSize);
+  if(req.body.breakEvenThresholdPercent!=null)data.breakEvenThresholdPercent=String(req.body.breakEvenThresholdPercent);
   const account = await prisma.account.update({ where: { id: existing.id }, data, include: { phases: { orderBy: { orderIndex: 'asc' } }, _count: { select: { trades: true } } } });
   success(res, serialize(account), 'Account updated successfully');
 }

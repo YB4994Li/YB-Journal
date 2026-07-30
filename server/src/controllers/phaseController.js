@@ -2,7 +2,7 @@ import { prisma } from '../config/prisma.js';
 import { success } from '../utils/response.js';
 import { ApiError } from '../utils/ApiError.js';
 
-const decimals = ['initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage'];
+const decimals = ['initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage','breakEvenThresholdPercent'];
 const serialize = (phase) => {
   const output = { ...phase };
   decimals.forEach((key) => { if (output[key] != null) output[key] = Number(output[key]); });
@@ -16,7 +16,7 @@ const find = async (id) => {
 const dataFrom = (body) => {
   const data = {};
   for (const key of ['name', 'phaseType', 'status', 'minimumTradingDays', 'notes']) if (key in body) data[key] = body[key] === '' ? null : body[key];
-  for (const key of ['initialBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage']) if (key in body) data[key] = body[key] === '' || body[key] == null ? null : String(body[key]);
+  for (const key of ['initialBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage','breakEvenThresholdPercent']) if (key in body) data[key] = body[key] === '' || body[key] == null ? null : String(body[key]);
   for (const key of ['startDate', 'endDate']) if (key in body) data[key] = body[key] ? new Date(`${String(body[key]).slice(0, 10)}T00:00:00.000Z`) : null;
   return data;
 };

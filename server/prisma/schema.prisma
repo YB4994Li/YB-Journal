@@ -41,6 +41,11 @@ enum CalculationStatus {
   UNAVAILABLE
 }
 
+enum ResultSource {
+  AUTO
+  MANUAL
+}
+
 enum AccountType {
   REAL
   FUNDED
@@ -71,23 +76,24 @@ enum PhaseStatus {
 }
 
 model Account {
-  id                Int            @id @default(autoincrement())
-  name              String         @db.VarChar(120)
-  initialCapital    Decimal        @db.Decimal(18, 2)
-  currency          Currency       @default(USD)
-  accountType       AccountType    @default(REAL)
-  broker            String?        @db.VarChar(120)
-  propFirm          String?        @db.VarChar(120)
-  platform          String?        @db.VarChar(120)
-  accountSize       Decimal?       @db.Decimal(18, 2)
-  notes             String?        @db.Text
-  externalReference String?        @db.VarChar(120)
-  status            AccountStatus  @default(ACTIVE)
-  displayOrder      Int            @default(0)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  trades            Trade[]
-  phases            AccountPhase[]
+  id                        Int            @id @default(autoincrement())
+  name                      String         @db.VarChar(120)
+  initialCapital            Decimal        @db.Decimal(18, 2)
+  currency                  Currency       @default(USD)
+  accountType               AccountType    @default(REAL)
+  broker                    String?        @db.VarChar(120)
+  propFirm                  String?        @db.VarChar(120)
+  platform                  String?        @db.VarChar(120)
+  accountSize               Decimal?       @db.Decimal(18, 2)
+  notes                     String?        @db.Text
+  externalReference         String?        @db.VarChar(120)
+  status                    AccountStatus  @default(ACTIVE)
+  displayOrder              Int            @default(0)
+  breakEvenThresholdPercent Decimal        @default(0.05) @db.Decimal(7, 4)
+  createdAt                 DateTime       @default(now())
+  updatedAt                 DateTime       @updatedAt
+  trades                    Trade[]
+  phases                    AccountPhase[]
 }
 
 model Strategy {
@@ -103,27 +109,28 @@ model Strategy {
 }
 
 model AccountPhase {
-  id                       Int         @id @default(autoincrement())
-  accountId                Int
-  name                     String      @db.VarChar(120)
-  phaseType                PhaseType
-  status                   PhaseStatus @default(PENDING)
-  orderIndex               Int
-  initialBalance           Decimal     @db.Decimal(18, 2)
-  currentBalance           Decimal     @db.Decimal(18, 2)
-  profitTargetPercentage   Decimal?    @db.Decimal(7, 3)
-  maximumLossPercentage    Decimal?    @db.Decimal(7, 3)
-  dailyLossLimitPercentage Decimal?    @db.Decimal(7, 3)
-  minimumTradingDays       Int?
-  startDate                DateTime?   @db.Date
-  endDate                  DateTime?   @db.Date
-  passedAt                 DateTime?
-  failedAt                 DateTime?
-  notes                    String?     @db.Text
-  createdAt                DateTime    @default(now())
-  updatedAt                DateTime    @updatedAt
-  account                  Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  trades                   Trade[]
+  id                        Int         @id @default(autoincrement())
+  accountId                 Int
+  name                      String      @db.VarChar(120)
+  phaseType                 PhaseType
+  status                    PhaseStatus @default(PENDING)
+  orderIndex                Int
+  initialBalance            Decimal     @db.Decimal(18, 2)
+  currentBalance            Decimal     @db.Decimal(18, 2)
+  profitTargetPercentage    Decimal?    @db.Decimal(7, 3)
+  maximumLossPercentage     Decimal?    @db.Decimal(7, 3)
+  dailyLossLimitPercentage  Decimal?    @db.Decimal(7, 3)
+  minimumTradingDays        Int?
+  breakEvenThresholdPercent Decimal     @default(0.05) @db.Decimal(7, 4)
+  startDate                 DateTime?   @db.Date
+  endDate                   DateTime?   @db.Date
+  passedAt                  DateTime?
+  failedAt                  DateTime?
+  notes                     String?     @db.Text
+  createdAt                 DateTime    @default(now())
+  updatedAt                 DateTime    @updatedAt
+  account                   Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  trades                    Trade[]
 
   @@unique([accountId, orderIndex])
   @@index([accountId, status])
@@ -159,6 +166,7 @@ model Trade {
   riskAmount             Decimal?          @db.Decimal(18, 2)
   balanceBeforeTrade     Decimal?          @db.Decimal(18, 2)
   result                 TradeResult
+  resultSource           ResultSource      @default(AUTO)
   profitLoss             Decimal           @db.Decimal(18, 2)
   screenshotPath         String?           @db.VarChar(255)
   emotion                String?           @db.Text

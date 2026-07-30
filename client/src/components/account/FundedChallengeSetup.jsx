@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
 import PhaseConfigurationForm from './PhaseConfigurationForm.jsx';
 
-const phase = (name,type,balance,status='PENDING') => ({ name,phaseType:type,status,initialBalance:balance,profitTargetPercentage:type==='FUNDED_LIVE'?'':'10',maximumLossPercentage:'10',dailyLossLimitPercentage:'5',minimumTradingDays:'0' });
+const phase = (name,type,balance,status='PENDING') => ({ name,phaseType:type,status,initialBalance:balance,breakEvenThresholdPercent:'0.05',profitTargetPercentage:type==='FUNDED_LIVE'?'':'10',maximumLossPercentage:'10',dailyLossLimitPercentage:'5',minimumTradingDays:'0' });
 export function generatePhases(count, balance, includeLive=true) {
   const phases=Array.from({length:Number(count)||0},(_,index)=>phase(`Phase ${index+1}`,index===0?'EVALUATION':'VERIFICATION',balance,index===0?'ACTIVE':'PENDING'));
   if(includeLive) phases.push(phase('Funded / Live','FUNDED_LIVE',balance,phases.length?'PENDING':'ACTIVE'));

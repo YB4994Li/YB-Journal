@@ -9,6 +9,7 @@ export const tradeRules = [
   body('tradeDate').isISO8601({ strict: true }).withMessage('tradeDate must be a valid date'),
   body('direction').isIn(['BUY', 'SELL']),
   body('result').isIn(['WIN', 'LOSS', 'BREAK_EVEN']),
+  body('resultSource').optional().isIn(['AUTO','MANUAL']),
   body('profitLoss').isDecimal({ decimal_digits: '0,2' }).withMessage('profitLoss must be a valid amount'),
   body('session').optional({ nullable: true }).trim().isLength({ max: 50 }),
   body('openTimeUtc').optional({ nullable: true }).isISO8601().withMessage('openTimeUtc must be a valid UTC datetime'),

@@ -29,9 +29,13 @@ export async function getStatistics(accountId, phaseId = null) {
   const { initialBalance, trades } = await context(accountId, phaseId, true);
   const pnl = trades.map((trade) => Number(trade.profitLoss));
   const net = pnl.reduce((sum, value) => sum + value, 0);
-  const wins = pnl.filter((value) => value > 0).length, losses = pnl.filter((value) => value < 0).length, breakEven = pnl.filter((value) => value === 0).length;
+  const wins = trades.filter((trade) => trade.result === 'WIN').length;
+  const losses = trades.filter((trade) => trade.result === 'LOSS').length;
+  const breakEven = trades.filter((trade) => trade.result === 'BREAK_EVEN').length;
   const rr = trades.filter((trade) => trade.plannedRR != null).map((trade) => Number(trade.plannedRR));
-  const resultR = trades.filter((trade) => trade.resultR != null).map((trade) => Number(trade.resultR));
+  const realizedR = trades.filter((trade) => trade.realizedRMultiple != null).map((trade) => Number(trade.realizedRMultiple));
+  const grossProfit=pnl.filter((value)=>value>0).reduce((sum,value)=>sum+value,0);
+  const grossLoss=Math.abs(pnl.filter((value)=>value<0).reduce((sum,value)=>sum+value,0));
   const ordered = [...trades].sort((a, b) => Number(a.profitLoss) - Number(b.profitLoss));
   const summarize = (trade) => trade ? { id: trade.id, tradeNumber: trade.tradeNumber, profitLoss: Number(trade.profitLoss) } : null;
   return {
@@ -39,7 +43,10 @@ export async function getStatistics(accountId, phaseId = null) {
     totalTrades: trades.length, winningTrades: wins, losingTrades: losses, breakEvenTrades: breakEven,
     winRate: wins + losses ? round((wins / (wins + losses)) * 100) : 0,
     averagePlannedRR: rr.length ? round(rr.reduce((a, b) => a + b, 0) / rr.length, 4) : null,
-    averageResultR: resultR.length ? round(resultR.reduce((a, b) => a + b, 0) / resultR.length, 4) : null,
+    averageResultR: realizedR.length ? round(realizedR.reduce((a, b) => a + b, 0) / realizedR.length, 4) : null,
+    averageRealizedR:realizedR.length?round(realizedR.reduce((a,b)=>a+b,0)/realizedR.length,4):null,
+    profitFactor: grossLoss ? round(grossProfit / grossLoss, 4) : null,
+    expectancy:trades.length?round(net/trades.length,2):null,
     bestTrade: summarize(ordered.at(-1)), worstTrade: summarize(ordered[0])
   };
 }

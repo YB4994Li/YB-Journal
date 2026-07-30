@@ -8,6 +8,7 @@ export const phaseRules = [
   ...['profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage'].map((field) =>
     body(field).optional({ nullable: true, checkFalsy: true }).isDecimal().custom((value) => Number(value) >= 0)),
   body('minimumTradingDays').optional({ nullable: true, checkFalsy: true }).isInt({ min: 0 }),
+  body('breakEvenThresholdPercent').optional().isDecimal().custom((value)=>Number(value)>=0),
   body('startDate').optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body('endDate').optional({ nullable: true, checkFalsy: true }).isISO8601(),
   body('notes').optional({ nullable: true }).trim().isLength({ max: 5000 })
