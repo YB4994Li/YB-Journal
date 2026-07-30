@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+server/uploads/screenshots/*
+server/uploads/csv/*
+!server/uploads/screenshots/.gitkeep
+!server/uploads/csv/.gitkeep

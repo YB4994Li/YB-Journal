@@ -1,0 +1,13 @@
+import { Router } from 'express';
+import * as controller from '../controllers/strategyController.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+const router=Router();
+router.get('/',asyncHandler(controller.list));
+router.get('/:id',asyncHandler(controller.get));
+router.post('/',asyncHandler(controller.create));
+router.patch('/:id',asyncHandler(controller.update));
+router.delete('/:id',asyncHandler(controller.remove));
+router.post('/:id/archive',asyncHandler(controller.archive));
+router.post('/:id/restore',asyncHandler(controller.restore));
+router.post('/merge',asyncHandler(controller.merge));
+export default router;

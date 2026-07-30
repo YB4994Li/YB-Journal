@@ -1,0 +1,2 @@
+import PhaseStatusBadge from './PhaseStatusBadge.jsx';
+export default function PhaseTabs({phases,value,onChange}){return <div className="scrollbar flex gap-2 overflow-x-auto pb-1">{phases.map((phase)=><button key={phase.id} onClick={()=>onChange(phase.id)} className={`flex shrink-0 items-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold ${value===phase.id?'border-lime bg-lime/10 text-white':'border-line bg-panel text-muted'}`}>{phase.name}<PhaseStatusBadge status={phase.status}/></button>)}</div>;}

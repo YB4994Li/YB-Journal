@@ -1,0 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { @apply border-line; }
+  body { @apply m-0 bg-ink text-slate-100 antialiased; }
+  input, select, textarea { color-scheme: dark; }
+}
+@layer components {
+  .card { @apply rounded-2xl border border-line bg-panel shadow-glow; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+  .btn-primary { @apply btn bg-lime text-slate-950 hover:bg-[#d7ff83]; }
+  .btn-secondary { @apply btn border border-line bg-[#171d27] text-slate-200 hover:border-slate-500; }
+  .field { @apply w-full rounded-lg border border-line bg-[#0d1118] px-3 py-2.5 text-sm outline-none placeholder:text-slate-600 focus:border-lime/60; }
+  .label { @apply mb-1.5 block text-xs font-medium uppercase tracking-wider text-muted; }
+}
+.scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+.scrollbar::-webkit-scrollbar-thumb { background: #333c49; border-radius: 8px; }

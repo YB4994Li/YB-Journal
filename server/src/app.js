@@ -1,0 +1,26 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import path from 'node:path';
+import { env } from './config/env.js';
+import accountRoutes from './routes/accountRoutes.js';
+import tradeRoutes from './routes/tradeRoutes.js';
+import phaseRoutes from './routes/phaseRoutes.js';
+import strategyRoutes from './routes/strategyRoutes.js';
+import { errorHandler, notFound } from './middleware/errorHandler.js';
+
+const app = express();
+app.disable('x-powered-by');
+app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+app.use(cors({ origin: env.clientUrl.split(',').map((value) => value.trim()), credentials: false }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: false, limit: '1mb' }));
+app.use('/uploads', express.static(path.resolve('uploads'), { dotfiles: 'deny', index: false, maxAge: env.isProduction ? '1d' : 0 }));
+app.get('/api/health', (req, res) => res.json({ success: true, data: { status: 'ok' }, message: 'API is healthy' }));
+app.use('/api/accounts', accountRoutes);
+app.use('/api/trades', tradeRoutes);
+app.use('/api/phases', phaseRoutes);
+app.use('/api/strategies', strategyRoutes);
+app.use(notFound);
+app.use(errorHandler);
+export default app;

@@ -1,0 +1,186 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Currency {
+  USD
+  EUR
+  GBP
+  MAD
+}
+
+enum Direction {
+  BUY
+  SELL
+}
+
+enum TradeResult {
+  WIN
+  LOSS
+  BREAK_EVEN
+}
+
+enum ImportSource {
+  MANUAL
+  EXNESS
+  MT4
+  MT5
+  FUNDEDNEXT
+  GENERIC_CSV
+}
+
+enum CalculationStatus {
+  CALCULATED
+  PARTIAL
+  MANUAL
+  UNAVAILABLE
+}
+
+enum AccountType {
+  REAL
+  FUNDED
+}
+
+enum AccountStatus {
+  ACTIVE
+  PAUSED
+  PASSED
+  FAILED
+  CLOSED
+  ARCHIVED
+}
+
+enum PhaseType {
+  EVALUATION
+  VERIFICATION
+  FUNDED_LIVE
+  CUSTOM
+}
+
+enum PhaseStatus {
+  PENDING
+  ACTIVE
+  PASSED
+  FAILED
+  ARCHIVED
+}
+
+model Account {
+  id                Int            @id @default(autoincrement())
+  name              String         @db.VarChar(120)
+  initialCapital    Decimal        @db.Decimal(18, 2)
+  currency          Currency       @default(USD)
+  accountType       AccountType    @default(REAL)
+  broker            String?        @db.VarChar(120)
+  propFirm          String?        @db.VarChar(120)
+  platform          String?        @db.VarChar(120)
+  accountSize       Decimal?       @db.Decimal(18, 2)
+  notes             String?        @db.Text
+  externalReference String?        @db.VarChar(120)
+  status            AccountStatus  @default(ACTIVE)
+  displayOrder      Int            @default(0)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  trades            Trade[]
+  phases            AccountPhase[]
+}
+
+model Strategy {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(120)
+  normalizedKey String   @unique @db.VarChar(120)
+  description   String?  @db.Text
+  color         String?  @db.VarChar(30)
+  isArchived    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  trades        Trade[]
+}
+
+model AccountPhase {
+  id                       Int         @id @default(autoincrement())
+  accountId                Int
+  name                     String      @db.VarChar(120)
+  phaseType                PhaseType
+  status                   PhaseStatus @default(PENDING)
+  orderIndex               Int
+  initialBalance           Decimal     @db.Decimal(18, 2)
+  currentBalance           Decimal     @db.Decimal(18, 2)
+  profitTargetPercentage   Decimal?    @db.Decimal(7, 3)
+  maximumLossPercentage    Decimal?    @db.Decimal(7, 3)
+  dailyLossLimitPercentage Decimal?    @db.Decimal(7, 3)
+  minimumTradingDays       Int?
+  startDate                DateTime?   @db.Date
+  endDate                  DateTime?   @db.Date
+  passedAt                 DateTime?
+  failedAt                 DateTime?
+  notes                    String?     @db.Text
+  createdAt                DateTime    @default(now())
+  updatedAt                DateTime    @updatedAt
+  account                  Account     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  trades                   Trade[]
+
+  @@unique([accountId, orderIndex])
+  @@index([accountId, status])
+}
+
+model Trade {
+  id                     Int               @id @default(autoincrement())
+  tradeNumber            Int
+  accountId              Int
+  phaseId                Int?
+  strategyName           String?           @db.VarChar(120)
+  strategyId             Int?
+  market                 String            @db.VarChar(50)
+  tradeDate              DateTime          @db.Date
+  session                String?           @db.VarChar(50)
+  openTimeUtc            DateTime?
+  closeTimeUtc           DateTime?
+  sessionTimezone        String?           @db.VarChar(50)
+  sessionDetection       String?           @db.VarChar(20)
+  timeframe              String?           @db.VarChar(30)
+  direction              Direction
+  entryPrice             Decimal?          @db.Decimal(20, 8)
+  stopLoss               Decimal?          @db.Decimal(20, 8)
+  takeProfit             Decimal?          @db.Decimal(20, 8)
+  lotSize                Decimal?          @db.Decimal(18, 4)
+  plannedRR              Decimal?          @db.Decimal(10, 4)
+  plannedRROverride      Decimal?          @db.Decimal(10, 4)
+  resultR                Decimal?          @db.Decimal(10, 4)
+  realizedRMultiple      Decimal?          @db.Decimal(10, 4)
+  exitPrice              Decimal?          @db.Decimal(20, 8)
+  riskPercentage         Decimal?          @db.Decimal(7, 4)
+  riskPercentageOverride Decimal?          @db.Decimal(7, 4)
+  riskAmount             Decimal?          @db.Decimal(18, 2)
+  balanceBeforeTrade     Decimal?          @db.Decimal(18, 2)
+  result                 TradeResult
+  profitLoss             Decimal           @db.Decimal(18, 2)
+  screenshotPath         String?           @db.VarChar(255)
+  emotion                String?           @db.Text
+  importSource           ImportSource      @default(MANUAL)
+  calculationStatus      CalculationStatus @default(UNAVAILABLE)
+  calculationWarnings    String[]          @default([])
+  sourceTradeId          String?           @db.VarChar(100)
+  originalMarket         String?           @db.VarChar(100)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  account                Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  phase                  AccountPhase?     @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  strategy               Strategy?         @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+
+  @@unique([accountId, tradeNumber])
+  @@unique([accountId, importSource, sourceTradeId])
+  @@index([accountId])
+  @@index([phaseId])
+  @@index([tradeDate])
+  @@index([market])
+  @@index([strategyName])
+  @@index([strategyId])
+  @@index([result])
+  @@index([direction])
+}
