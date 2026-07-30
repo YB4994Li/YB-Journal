@@ -1,16 +1,17 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { calculateTradeAnalytics } from './tradeCalculationService.js';
-import { normalizeMarketSymbol } from './marketAnalyticsService.js';
+import { normalizeSymbol } from './symbolNormalizationService.js';
 import { ensureStrategy, normalizeStrategyKey, normalizeTimeframe } from './tradingLibraryService.js';
 
 const allowedSortFields = new Set(['tradeNumber', 'tradeDate', 'strategyName', 'market', 'direction', 'result', 'profitLoss', 'createdAt']);
-const decimalFields = ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'plannedRR', 'plannedRROverride', 'resultR', 'realizedRMultiple', 'exitPrice', 'riskAmount', 'riskPercentage', 'riskPercentageOverride', 'balanceBeforeTrade', 'profitLoss'];
+const decimalFields = ['entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'plannedRR', 'plannedRROverride', 'resultR', 'realizedRMultiple', 'exitPrice', 'riskAmount', 'riskPercentage', 'riskPercentageOverride', 'balanceBeforeTrade', 'balanceAfterTrade', 'contractSizeUsed', 'tickSizeUsed', 'tickValueUsed', 'pipSizeUsed', 'conversionRateUsed', 'profitLoss'];
 
 export function normalizeTrade(data) {
+  const normalizedMarket = normalizeSymbol(data.market);
   const normalized = {
     strategyName: data.strategyName?.trim() || null,
-    market: normalizeMarketSymbol(data.market),
+    market: normalizedMarket,
     tradeDate: new Date(`${String(data.tradeDate).slice(0, 10)}T00:00:00.000Z`),
     session: data.session?.trim() || null,
     openTimeUtc: data.openTimeUtc ? new Date(data.openTimeUtc) : null,
@@ -24,9 +25,14 @@ export function normalizeTrade(data) {
     emotion: data.emotion?.trim() || null,
     importSource: data.importSource?.trim() || 'MANUAL',
     sourceTradeId: data.sourceTradeId?.trim() || null,
-    originalMarket: data.originalMarket?.trim() || null,
+    originalMarket: data.originalMarket?.trim() || (String(data.market ?? '').trim() !== normalizedMarket ? String(data.market).trim() : null),
     calculationStatus: data.calculationStatus || 'UNAVAILABLE',
-    calculationWarnings: Array.isArray(data.calculationWarnings) ? data.calculationWarnings : []
+    calculationWarnings: Array.isArray(data.calculationWarnings) ? data.calculationWarnings : [],
+    instrumentSpecificationId: data.instrumentSpecificationId == null ? null : Number(data.instrumentSpecificationId),
+    riskCalculationMode: data.riskCalculationMode || null,
+    riskCalculationSource: data.riskCalculationSource?.trim() || null,
+    riskCalculationStatus: data.riskCalculationStatus || 'UNAVAILABLE',
+    riskCalculationError: data.riskCalculationError || null
   };
   for (const field of decimalFields) normalized[field] = data[field] === '' || data[field] == null ? null : String(data[field]);
   if (normalized.profitLoss == null) normalized.profitLoss = '0';
@@ -38,6 +44,7 @@ export function serializeTrade(trade) {
   const output = { ...trade };
   if(output.strategy)output.strategyName=output.strategy.name;
   for (const field of decimalFields) if (output[field] != null) output[field] = Number(output[field]);
+  if (output.balanceAfterTrade == null) output.balanceAfterTrade = output.balanceBeforeTrade == null ? null : Number((output.balanceBeforeTrade + output.profitLoss).toFixed(2));
   return output;
 }
 

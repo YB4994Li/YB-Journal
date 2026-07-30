@@ -1,14 +1,8 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { canonicalStrategyName, normalizeStrategyKey, normalizeTimeframe } from './tradingLibraryService.js';
-
-export function normalizeMarketSymbol(value) {
-  const original = String(value ?? '').trim();
-  if (!original) return null;
-  const upper = original.toUpperCase();
-  if (upper === 'UNKNOWN' || upper === 'N/A' || upper === 'NULL') return null;
-  return upper.replace(/[.-]?M$/, '');
-}
+import { normalizeSymbol } from './symbolNormalizationService.js';
+export const normalizeMarketSymbol = normalizeSymbol;
 
 function dateRange(query) {
   const from = query.dateFrom || query.startDate;

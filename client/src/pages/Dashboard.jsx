@@ -101,7 +101,7 @@ export default function Dashboard() {
     ['Current balance',stats&&money(stats.currentBalance,account?.currency),stats&&`${stats.netProfitLoss>=0?'+':''}${money(stats.netProfitLoss,account?.currency)} net`],
     ['Win rate',stats?`${number(stats.winRate,2)}%`:'—',stats&&`${stats.winningTrades}W · ${stats.losingTrades}L · ${stats.breakEvenTrades}BE`],
     ['Total trades',stats?.totalTrades??'—','Recorded journal entries'],
-    ['Average result',stats?.averageResultR==null?'—':`${number(stats.averageResultR,2)}R`,stats?.averagePlannedRR==null?'No planned RR':`${number(stats.averagePlannedRR,2)} planned RR`]
+    ['Average Realized R',stats?.averageRealizedR==null?'—':`${stats.averageRealizedR>=0?'+':''}${number(stats.averageRealizedR,2)}R`,stats?`Based on ${stats.averageRealizedRTradeCount||0} trades`:'No calculated R values']
   ],[stats,account]);
 
   if(loading)return <div className="flex min-h-screen items-center justify-center text-muted">Loading trading journal…</div>;

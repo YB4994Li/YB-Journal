@@ -46,6 +46,27 @@ enum ResultSource {
   MANUAL
 }
 
+enum AssetClass {
+  FOREX
+  METAL
+  INDEX
+  CRYPTO
+  COMMODITY
+}
+
+enum RiskCalculationMode {
+  CONTRACT_SIZE
+  TICK_VALUE
+  FOREX_CONVERSION
+  UNSUPPORTED
+}
+
+enum RiskCalculationStatus {
+  CALCULATED
+  MANUAL
+  UNAVAILABLE
+}
+
 enum AccountType {
   REAL
   FUNDED
@@ -96,6 +117,26 @@ model Account {
   phases                    AccountPhase[]
 }
 
+model InstrumentSpecification {
+  id               Int                 @id @default(autoincrement())
+  symbol           String              @db.VarChar(50)
+  normalizedSymbol String              @unique @db.VarChar(50)
+  displayName      String              @db.VarChar(120)
+  assetClass       AssetClass
+  contractSize     Decimal?            @db.Decimal(20, 8)
+  tickSize         Decimal?            @db.Decimal(20, 8)
+  tickValuePerLot  Decimal?            @db.Decimal(20, 8)
+  pipSize          Decimal?            @db.Decimal(20, 8)
+  profitCurrency   String?             @db.VarChar(10)
+  calculationMode  RiskCalculationMode
+  isActive         Boolean             @default(true)
+  isVerified       Boolean             @default(false)
+  source           String?             @db.Text
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  trades           Trade[]
+}
+
 model Strategy {
   id            Int      @id @default(autoincrement())
   name          String   @db.VarChar(120)
@@ -137,49 +178,61 @@ model AccountPhase {
 }
 
 model Trade {
-  id                     Int               @id @default(autoincrement())
-  tradeNumber            Int
-  accountId              Int
-  phaseId                Int?
-  strategyName           String?           @db.VarChar(120)
-  strategyId             Int?
-  market                 String            @db.VarChar(50)
-  tradeDate              DateTime          @db.Date
-  session                String?           @db.VarChar(50)
-  openTimeUtc            DateTime?
-  closeTimeUtc           DateTime?
-  sessionTimezone        String?           @db.VarChar(50)
-  sessionDetection       String?           @db.VarChar(20)
-  timeframe              String?           @db.VarChar(30)
-  direction              Direction
-  entryPrice             Decimal?          @db.Decimal(20, 8)
-  stopLoss               Decimal?          @db.Decimal(20, 8)
-  takeProfit             Decimal?          @db.Decimal(20, 8)
-  lotSize                Decimal?          @db.Decimal(18, 4)
-  plannedRR              Decimal?          @db.Decimal(10, 4)
-  plannedRROverride      Decimal?          @db.Decimal(10, 4)
-  resultR                Decimal?          @db.Decimal(10, 4)
-  realizedRMultiple      Decimal?          @db.Decimal(10, 4)
-  exitPrice              Decimal?          @db.Decimal(20, 8)
-  riskPercentage         Decimal?          @db.Decimal(7, 4)
-  riskPercentageOverride Decimal?          @db.Decimal(7, 4)
-  riskAmount             Decimal?          @db.Decimal(18, 2)
-  balanceBeforeTrade     Decimal?          @db.Decimal(18, 2)
-  result                 TradeResult
-  resultSource           ResultSource      @default(AUTO)
-  profitLoss             Decimal           @db.Decimal(18, 2)
-  screenshotPath         String?           @db.VarChar(255)
-  emotion                String?           @db.Text
-  importSource           ImportSource      @default(MANUAL)
-  calculationStatus      CalculationStatus @default(UNAVAILABLE)
-  calculationWarnings    String[]          @default([])
-  sourceTradeId          String?           @db.VarChar(100)
-  originalMarket         String?           @db.VarChar(100)
-  createdAt              DateTime          @default(now())
-  updatedAt              DateTime          @updatedAt
-  account                Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  phase                  AccountPhase?     @relation(fields: [phaseId], references: [id], onDelete: Cascade)
-  strategy               Strategy?         @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+  id                        Int                      @id @default(autoincrement())
+  tradeNumber               Int
+  accountId                 Int
+  phaseId                   Int?
+  strategyName              String?                  @db.VarChar(120)
+  strategyId                Int?
+  market                    String                   @db.VarChar(50)
+  tradeDate                 DateTime                 @db.Date
+  session                   String?                  @db.VarChar(50)
+  openTimeUtc               DateTime?
+  closeTimeUtc              DateTime?
+  sessionTimezone           String?                  @db.VarChar(50)
+  sessionDetection          String?                  @db.VarChar(20)
+  timeframe                 String?                  @db.VarChar(30)
+  direction                 Direction
+  entryPrice                Decimal?                 @db.Decimal(20, 8)
+  stopLoss                  Decimal?                 @db.Decimal(20, 8)
+  takeProfit                Decimal?                 @db.Decimal(20, 8)
+  lotSize                   Decimal?                 @db.Decimal(18, 4)
+  plannedRR                 Decimal?                 @db.Decimal(10, 4)
+  plannedRROverride         Decimal?                 @db.Decimal(10, 4)
+  resultR                   Decimal?                 @db.Decimal(10, 4)
+  realizedRMultiple         Decimal?                 @db.Decimal(10, 4)
+  exitPrice                 Decimal?                 @db.Decimal(20, 8)
+  riskPercentage            Decimal?                 @db.Decimal(7, 4)
+  riskPercentageOverride    Decimal?                 @db.Decimal(7, 4)
+  riskAmount                Decimal?                 @db.Decimal(18, 2)
+  balanceBeforeTrade        Decimal?                 @db.Decimal(18, 2)
+  balanceAfterTrade         Decimal?                 @db.Decimal(18, 2)
+  result                    TradeResult
+  resultSource              ResultSource             @default(AUTO)
+  profitLoss                Decimal                  @db.Decimal(18, 2)
+  screenshotPath            String?                  @db.VarChar(255)
+  emotion                   String?                  @db.Text
+  importSource              ImportSource             @default(MANUAL)
+  calculationStatus         CalculationStatus        @default(UNAVAILABLE)
+  calculationWarnings       String[]                 @default([])
+  sourceTradeId             String?                  @db.VarChar(100)
+  originalMarket            String?                  @db.VarChar(100)
+  instrumentSpecificationId Int?
+  riskCalculationMode       RiskCalculationMode?
+  contractSizeUsed          Decimal?                 @db.Decimal(20, 8)
+  tickSizeUsed              Decimal?                 @db.Decimal(20, 8)
+  tickValueUsed             Decimal?                 @db.Decimal(20, 8)
+  pipSizeUsed               Decimal?                 @db.Decimal(20, 8)
+  conversionRateUsed        Decimal?                 @db.Decimal(20, 8)
+  riskCalculationSource     String?                  @db.VarChar(255)
+  riskCalculationStatus     RiskCalculationStatus    @default(UNAVAILABLE)
+  riskCalculationError      String?                  @db.VarChar(100)
+  createdAt                 DateTime                 @default(now())
+  updatedAt                 DateTime                 @updatedAt
+  account                   Account                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  phase                     AccountPhase?            @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+  strategy                  Strategy?                @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+  instrumentSpecification   InstrumentSpecification? @relation(fields: [instrumentSpecificationId], references: [id], onDelete: SetNull)
 
   @@unique([accountId, tradeNumber])
   @@unique([accountId, importSource, sourceTradeId])
@@ -191,4 +244,5 @@ model Trade {
   @@index([strategyId])
   @@index([result])
   @@index([direction])
+  @@index([instrumentSpecificationId])
 }

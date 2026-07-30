@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { success } from '../utils/response.js';
 import { ApiError } from '../utils/ApiError.js';
+import { recalculateJournalHistory } from '../services/journalBalanceService.js';
 
 const decimals = ['initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage','breakEvenThresholdPercent'];
 const serialize = (phase) => {
@@ -52,7 +53,10 @@ export async function update(req, res) {
     }
     return tx.accountPhase.update({ where: { id: phase.id }, data });
   });
-  success(res, serialize(updated), 'Phase updated successfully');
+  if (req.body.initialBalance != null || req.body.breakEvenThresholdPercent != null) {
+    await recalculateJournalHistory(phase.accountId, phase.id);
+  }
+  success(res, serialize(req.body.initialBalance != null || req.body.breakEvenThresholdPercent != null ? await find(phase.id) : updated), 'Phase updated successfully');
 }
 export async function remove(req, res) {
   const phase = await find(Number(req.params.phaseId));

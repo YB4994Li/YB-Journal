@@ -53,6 +53,22 @@ test('maps a winning Exness trade into the application model', () => {
   assert.equal(row.data.emotion, null);
 });
 
+test('uses net broker P&L when commission and swap are available', () => {
+  const csv = [
+    'ticket,opening_time_utc,closing_time_utc,type,lots,symbol,opening_price,closing_price,stop_loss,take_profit,profit,commission,swap',
+    '1,2026-07-24 09:15:00,2026-07-24 10:30:00,buy,0.10,XAUUSD,2380,2385,2375,2390,10,-2,-1'
+  ].join('\n');
+  assert.equal(parseCsv(Buffer.from(csv)).rows[0].data.profitLoss, '7');
+});
+
+test('does not apply commission and swap twice when broker column is Net Profit', () => {
+  const csv = [
+    'ticket,opening_time_utc,closing_time_utc,type,lots,symbol,opening_price,closing_price,stop_loss,take_profit,Net Profit,commission,swap',
+    '1,2026-07-24 09:15:00,2026-07-24 10:30:00,buy,0.10,XAUUSD,2380,2385,2375,2390,7,-2,-1'
+  ].join('\n');
+  assert.equal(parseCsv(Buffer.from(csv)).rows[0].data.profitLoss, '7');
+});
+
 test('detects every fixed UTC session boundary from opening time', () => {
   const rows = [
     ['1', '2026-07-24 00:00:00', 'ASIA'],
@@ -190,7 +206,7 @@ test('imports a standard MT5 report with duplicate Time and Price columns', () =
   assert.equal(trade.stopLoss, '2295');
   assert.equal(trade.takeProfit, '2310');
   assert.equal(trade.market, 'XAUUSD');
-  assert.equal(trade.profitLoss, '48.3');
+  assert.equal(trade.profitLoss, '46.6');
 });
 
 test('imports FundedNext-style aliases without editing the CSV', () => {

@@ -6,7 +6,7 @@ import { money, number, shortDate } from '../../utils/format.js';
 const columns = [
   ['tradeNumber','#'],['strategyName','Strategy'],['importSource','Source'],['market','Market'],['tradeDate','Date'],['session','Session'],['timeframe','Timeframe'],
   ['direction','Direction'],['entryPrice','Entry'],['stopLoss','Stop'],['takeProfit','Target'],['lotSize','Lot'],['plannedRR','Planned RR'],
-  ['realizedRMultiple','Realized R'],['exitPrice','Exit'],['riskPercentage','Risk %'],['result','Result'],['profitLoss','Profit / Loss'],
+  ['realizedRMultiple','Realized R'],['exitPrice','Exit'],['riskAmount','Risk Amount'],['riskPercentage','Risk %'],['result','Result'],['profitLoss','Profit / Loss'],
   ['screenshot','Screenshot'],['emotion','Emotion']
 ];
 
@@ -34,8 +34,10 @@ export default function TradeTable({ data, loading, error, filters, setFilters, 
     if (key === 'emotion') return <span className="block max-w-52 truncate" title={trade.emotion}>{trade.emotion || '—'}</span>;
     if (key === 'strategyName') return trade.strategyName || '-';
     if (key === 'plannedRR') return <span title={trade.calculationWarnings?.join('\n')}>{number(trade.plannedRROverride ?? trade.plannedRR)}{trade.plannedRROverride == null && trade.plannedRR != null && <span className="ml-1 rounded bg-sky-500/10 px-1 text-[10px] text-sky-300">AUTO</span>}</span>;
-    if (key === 'riskPercentage') return <span title={trade.calculationWarnings?.join('\n')}>{number(trade.riskPercentageOverride ?? trade.riskPercentage)}{trade.riskPercentageOverride == null && trade.riskPercentage != null && <span className="ml-1 rounded bg-sky-500/10 px-1 text-[10px] text-sky-300">AUTO</span>}</span>;
-    if (['entryPrice','stopLoss','takeProfit','lotSize','realizedRMultiple','exitPrice'].includes(key)) return number(trade[key]);
+    if (key === 'riskAmount') return <span title={trade.riskCalculationError ? trade.calculationWarnings?.join('\n') : ''}>{trade.riskAmount == null ? '—' : money(trade.riskAmount,currency)}{trade.riskCalculationStatus === 'CALCULATED' && <span className="ml-1 rounded bg-sky-500/10 px-1 text-[10px] text-sky-300">AUTO</span>}</span>;
+    if (key === 'riskPercentage') return <span title={trade.calculationWarnings?.join('\n')}>{(trade.riskPercentageOverride ?? trade.riskPercentage) == null ? '—' : `${number(trade.riskPercentageOverride ?? trade.riskPercentage)}%`}{trade.riskPercentageOverride == null && trade.riskPercentage != null && <span className="ml-1 rounded bg-sky-500/10 px-1 text-[10px] text-sky-300">AUTO</span>}</span>;
+    if (key === 'realizedRMultiple') return <span title={trade.calculationWarnings?.join('\n')}>{trade.realizedRMultiple == null ? '—' : `${number(trade.realizedRMultiple)}R`}</span>;
+    if (['entryPrice','stopLoss','takeProfit','lotSize','exitPrice'].includes(key)) return number(trade[key]);
     return trade[key] || '—';
   };
   return <div className="card overflow-hidden">

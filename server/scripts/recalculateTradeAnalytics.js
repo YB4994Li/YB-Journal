@@ -1,59 +1,46 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
-import { calculateTradeAnalytics, reconstructRealizedBalances } from '../src/services/tradeCalculationService.js';
+import { recalculateJournalHistory } from '../src/services/journalBalanceService.js';
 
 const prisma = new PrismaClient();
+const dryRun = process.argv.includes('--dry-run');
 
-async function recalculateJournal(account, phase = null) {
-  const phaseId = phase?.id ?? null;
-  const trades = await prisma.trade.findMany({
-    where: { accountId: account.id, phaseId },
-    orderBy: [{ tradeDate: 'asc' }, { tradeNumber: 'asc' }]
-  });
-  const initialCapital = Number(phase?.initialBalance ?? account.initialCapital);
-  const thresholdPercent = Number(phase?.breakEvenThresholdPercent ?? account.breakEvenThresholdPercent);
-  const ordered = reconstructRealizedBalances(trades, initialCapital);
-
-  await prisma.$transaction(ordered.map(({ trade, balanceBeforeTrade }) => {
-    const calculated = calculateTradeAnalytics(
-      { ...trade, balanceBeforeTrade },
-      {
-        accountCurrency: account.currency,
-        initialCapital,
-        breakEvenThresholdPercent: thresholdPercent,
-        balanceBeforeTrade
-      }
-    );
-    return prisma.trade.update({
-      where: { id: trade.id },
-      data: {
-        balanceBeforeTrade,
-        plannedRR: calculated.plannedRR,
-        realizedRMultiple: calculated.realizedRMultiple,
-        riskAmount: calculated.riskAmount,
-        riskPercentage: calculated.riskPercentage,
-        result: calculated.result,
-        resultSource: calculated.resultSource,
-        calculationStatus: calculated.calculationStatus,
-        calculationWarnings: calculated.calculationWarnings
-      }
-    });
-  }));
-
-  return trades.length;
+async function processJournal(accountId, phaseId) {
+  return prisma.$transaction(
+    (tx) => recalculateJournalHistory(accountId, phaseId, tx, { dryRun, refreshSpecifications: true }),
+    { timeout: 30000 }
+  );
 }
 
 async function main() {
-  const accounts = await prisma.account.findMany({ include: { phases: true } });
-  let updated = 0;
+  const accounts = await prisma.account.findMany({ include: { phases: { select: { id: true } } } });
+  const summary = {
+    journals: 0,
+    trades: 0,
+    calculatedRisk: 0,
+    unavailableRisk: 0,
+    missingSpecifications: 0,
+    missingStopLoss: 0,
+    missingConversionRates: 0
+  };
   for (const account of accounts) {
-    if (account.accountType === 'FUNDED') {
-      for (const phase of account.phases) updated += await recalculateJournal(account, phase);
-    } else {
-      updated += await recalculateJournal(account);
+    const phaseIds = account.accountType === 'FUNDED' ? account.phases.map((phase) => phase.id) : [null];
+    for (const phaseId of phaseIds) {
+      const history = await processJournal(account.id, phaseId);
+      summary.journals += 1;
+      summary.trades += history.length;
+      for (const item of history) {
+        const status = item.analytics.riskCalculationStatus;
+        const error = item.analytics.riskCalculationError;
+        if (status === 'CALCULATED' || status === 'MANUAL') summary.calculatedRisk += 1;
+        else summary.unavailableRisk += 1;
+        if (error === 'MISSING_INSTRUMENT_SPECIFICATION') summary.missingSpecifications += 1;
+        if (error === 'MISSING_STOP_LOSS') summary.missingStopLoss += 1;
+        if (error === 'MISSING_CONVERSION_RATE') summary.missingConversionRates += 1;
+      }
     }
   }
-  console.log(`Recalculated ${updated} trades without changing broker P&L or manual result overrides.`);
+  console.log(JSON.stringify({ mode: dryRun ? 'DRY_RUN' : 'APPLY', ...summary }, null, 2));
 }
 
 main()

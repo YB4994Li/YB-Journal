@@ -3,7 +3,7 @@ import { success } from '../utils/response.js';
 import { ApiError } from '../utils/ApiError.js';
 import { createTrade, listTradeIds, listTrades, nextTradeNumber, normalizeTrade, serializeTrade } from '../services/tradeService.js';
 import { removeScreenshot } from '../utils/files.js';
-import { syncPhaseBalance } from '../services/statisticsService.js';
+import { recalculateJournalHistory } from '../services/journalBalanceService.js';
 import { calculateTradeAnalytics } from '../services/tradeCalculationService.js';
 import { ensureStrategy } from '../services/tradingLibraryService.js';
 
@@ -22,8 +22,9 @@ export async function get(req, res) {
   success(res, serializeTrade(await findTrade(Number(req.params.id))), 'Trade retrieved successfully');
 }
 export async function create(req, res) {
-  const trade = await createTrade(Number(req.params.accountId), req.body);
-  await syncPhaseBalance(trade.phaseId);
+  let trade = await createTrade(Number(req.params.accountId), req.body);
+  await recalculateJournalHistory(trade.accountId, trade.phaseId);
+  trade = serializeTrade(await findTrade(trade.id));
   success(res, trade, 'Trade created successfully', 201);
 }
 export async function update(req, res) {
@@ -41,25 +42,26 @@ export async function update(req, res) {
   const context=phaseId?await prisma.accountPhase.findUnique({where:{id:phaseId},select:{initialBalance:true,breakEvenThresholdPercent:true,account:{select:{currency:true}}}}):await prisma.account.findUnique({where:{id:existing.accountId},select:{initialCapital:true,breakEvenThresholdPercent:true,currency:true}});
   Object.assign(normalized, calculateTradeAnalytics(normalized, { balanceBeforeTrade: normalized.balanceBeforeTrade,accountCurrency:context.account?.currency??context.currency,initialCapital:Number(context.initialBalance??context.initialCapital),breakEvenThresholdPercent:Number(context.breakEvenThresholdPercent) }));
   const trade = await prisma.trade.update({ where: { id: existing.id }, data: { ...normalized, phaseId },include:{strategy:{select:{id:true,name:true,isArchived:true}}} });
-  await Promise.all([syncPhaseBalance(existing.phaseId), syncPhaseBalance(phaseId)]);
-  success(res, serializeTrade(trade), 'Trade updated successfully');
+  await recalculateJournalHistory(existing.accountId, phaseId);
+  if (existing.phaseId !== phaseId) await recalculateJournalHistory(existing.accountId, existing.phaseId);
+  success(res, serializeTrade(await findTrade(trade.id)), 'Trade updated successfully');
 }
 export async function remove(req, res) {
   const trade = await findTrade(Number(req.params.id));
   await prisma.trade.delete({ where: { id: trade.id } });
-  await syncPhaseBalance(trade.phaseId);
+  await recalculateJournalHistory(trade.accountId, trade.phaseId);
   await removeScreenshot(trade.screenshotPath);
   success(res, null, 'Trade deleted successfully');
 }
 export async function bulkRemove(req, res) {
   const tradeIds = [...new Set(req.body.tradeIds.map(Number))];
   const result = await prisma.$transaction(async (tx) => {
-    const trades = await tx.trade.findMany({ where: { id: { in: tradeIds } }, select: { id: true, phaseId: true, screenshotPath: true } });
+    const trades = await tx.trade.findMany({ where: { id: { in: tradeIds } }, select: { id: true, accountId: true, phaseId: true, screenshotPath: true } });
     const deleted = await tx.trade.deleteMany({ where: { id: { in: trades.map(({ id }) => id) } } });
-    return { count: deleted.count, phaseIds: [...new Set(trades.map(({ phaseId }) => phaseId).filter(Boolean))], screenshots: trades.map(({ screenshotPath }) => screenshotPath).filter(Boolean) };
+    return { count: deleted.count, journals: [...new Map(trades.map((trade) => [`${trade.accountId}:${trade.phaseId ?? 'real'}`, { accountId: trade.accountId, phaseId: trade.phaseId }])).values()], screenshots: trades.map(({ screenshotPath }) => screenshotPath).filter(Boolean) };
   });
   await Promise.all(result.screenshots.map(removeScreenshot));
-  await Promise.all(result.phaseIds.map((phaseId) => syncPhaseBalance(phaseId)));
+  for (const journal of result.journals) await recalculateJournalHistory(journal.accountId, journal.phaseId);
   success(res, { deletedCount: result.count }, `${result.count} trades deleted successfully`);
 }
 export async function duplicate(req, res) {
@@ -69,8 +71,8 @@ export async function duplicate(req, res) {
     const { id, createdAt, updatedAt, screenshotPath, ...data } = source;
     return tx.trade.create({ data: { ...data, tradeNumber, screenshotPath: null } });
   }, { isolationLevel: 'Serializable' });
-  await syncPhaseBalance(copy.phaseId);
-  success(res, serializeTrade(copy), 'Trade duplicated successfully', 201);
+  await recalculateJournalHistory(copy.accountId, copy.phaseId);
+  success(res, serializeTrade(await findTrade(copy.id)), 'Trade duplicated successfully', 201);
 }
 export async function uploadScreenshot(req, res) {
   if (!req.file) throw new ApiError(400, 'Screenshot file is required');

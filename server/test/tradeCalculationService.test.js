@@ -31,6 +31,13 @@ test('calculates BUY and SELL planned RR', () => {
   assert.equal(calculateTradeAnalytics({ direction: 'SELL', entryPrice: 100, stopLoss: 105, takeProfit: 90 }, context).plannedRR, 2);
 });
 
+test('rejects invalid BUY and SELL planned-RR geometry', () => {
+  assert.equal(calculateTradeAnalytics({ direction: 'BUY', entryPrice: 100, stopLoss: 105, takeProfit: 110 }, context).plannedRR, null);
+  assert.equal(calculateTradeAnalytics({ direction: 'BUY', entryPrice: 100, stopLoss: 95, takeProfit: 90 }, context).plannedRR, null);
+  assert.equal(calculateTradeAnalytics({ direction: 'SELL', entryPrice: 100, stopLoss: 95, takeProfit: 90 }, context).plannedRR, null);
+  assert.equal(calculateTradeAnalytics({ direction: 'SELL', entryPrice: 100, stopLoss: 105, takeProfit: 110 }, context).plannedRR, null);
+});
+
 test('calculates realized R from broker P&L divided by reliable risk amount', () => {
   assert.equal(calculateTradeAnalytics({ profitLoss: 150, riskAmount: 100 }, context).realizedRMultiple, 1.5);
   assert.equal(calculateTradeAnalytics({ profitLoss: -50, riskAmount: 100 }, context).realizedRMultiple, -0.5);
@@ -53,4 +60,27 @@ test('reconstructs realized balances chronologically by close time', () => {
     { id: 1, closeTimeUtc: '2026-01-01T12:00:00Z', profitLoss: 100 }
   ], 1000);
   assert.deepEqual(result.map(({ trade, balanceBeforeTrade }) => [trade.id, balanceBeforeTrade]), [[1, 1000], [2, 1100]]);
+});
+
+test('balance history uses timestamp fallbacks and stable tie ordering', () => {
+  const result = reconstructRealizedBalances([
+    { id: 3, tradeDate: '2026-01-03', createdAt: '2026-01-01T00:00:03Z', profitLoss: 30 },
+    { id: 2, openTimeUtc: '2026-01-02T10:00:00Z', createdAt: '2026-01-01T00:00:02Z', profitLoss: 20 },
+    { id: 1, openTimeUtc: '2026-01-02T10:00:00Z', createdAt: '2026-01-01T00:00:01Z', profitLoss: 10 }
+  ], 1000);
+  assert.deepEqual(result.map(({ trade, balanceBeforeTrade, balanceAfterTrade }) => [trade.id, balanceBeforeTrade, balanceAfterTrade]), [
+    [1, 1000, 1010], [2, 1010, 1030], [3, 1030, 1060]
+  ]);
+});
+
+test('net realized P&L is preferred when supplied', () => {
+  const [item] = reconstructRealizedBalances([{ id: 1, netProfitLoss: 95, profitLoss: 100 }], 1000);
+  assert.equal(item.balanceAfterTrade, 1095);
+});
+
+test('funded phase histories remain isolated when reconstructed separately', () => {
+  const phaseOne = reconstructRealizedBalances([{ id: 1, profitLoss: 100 }], 10000);
+  const phaseTwo = reconstructRealizedBalances([{ id: 2, profitLoss: -50 }], 5000);
+  assert.equal(phaseOne[0].balanceBeforeTrade, 10000);
+  assert.equal(phaseTwo[0].balanceBeforeTrade, 5000);
 });

@@ -1,7 +1,15 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
+import { reconstructRealizedBalances } from './tradeCalculationService.js';
 
 const round = (value, digits = 2) => Number(Number(value).toFixed(digits));
+export function averageRealizedRMetrics(trades) {
+  const values = trades.filter((trade) => trade.realizedRMultiple != null).map((trade) => Number(trade.realizedRMultiple));
+  return {
+    averageRealizedR: values.length ? round(values.reduce((sum, value) => sum + value, 0) / values.length, 4) : null,
+    tradeCount: values.length
+  };
+}
 async function context(accountId, phaseId, includeTrades) {
   const account = await prisma.account.findUnique({ where: { id: accountId } });
   if (!account) throw new ApiError(404, 'Account not found');
@@ -34,6 +42,7 @@ export async function getStatistics(accountId, phaseId = null) {
   const breakEven = trades.filter((trade) => trade.result === 'BREAK_EVEN').length;
   const rr = trades.filter((trade) => trade.plannedRR != null).map((trade) => Number(trade.plannedRR));
   const realizedR = trades.filter((trade) => trade.realizedRMultiple != null).map((trade) => Number(trade.realizedRMultiple));
+  const averageR = averageRealizedRMetrics(trades);
   const grossProfit=pnl.filter((value)=>value>0).reduce((sum,value)=>sum+value,0);
   const grossLoss=Math.abs(pnl.filter((value)=>value<0).reduce((sum,value)=>sum+value,0));
   const ordered = [...trades].sort((a, b) => Number(a.profitLoss) - Number(b.profitLoss));
@@ -44,7 +53,8 @@ export async function getStatistics(accountId, phaseId = null) {
     winRate: wins + losses ? round((wins / (wins + losses)) * 100) : 0,
     averagePlannedRR: rr.length ? round(rr.reduce((a, b) => a + b, 0) / rr.length, 4) : null,
     averageResultR: realizedR.length ? round(realizedR.reduce((a, b) => a + b, 0) / realizedR.length, 4) : null,
-    averageRealizedR:realizedR.length?round(realizedR.reduce((a,b)=>a+b,0)/realizedR.length,4):null,
+    averageRealizedR: averageR.averageRealizedR,
+    averageRealizedRTradeCount: averageR.tradeCount,
     profitFactor: grossLoss ? round(grossProfit / grossLoss, 4) : null,
     expectancy:trades.length?round(net/trades.length,2):null,
     bestTrade: summarize(ordered.at(-1)), worstTrade: summarize(ordered[0])
@@ -52,13 +62,15 @@ export async function getStatistics(accountId, phaseId = null) {
 }
 export async function getBalanceHistory(accountId, phaseId = null) {
   const { account, phase, trades, initialBalance } = await context(accountId, phaseId, true);
-  let balance = initialBalance;
   const initialDate = (phase?.startDate || phase?.createdAt || account.createdAt).toISOString().slice(0, 10);
   return [
-    { label: 'Initial Balance', date: initialDate, tradeNumber: null, profitLoss: 0, balance: round(balance) },
-    ...trades.map((trade) => {
-      const profitLoss = Number(trade.profitLoss); balance += profitLoss;
-      return { label: `Trade #${trade.tradeNumber}`, date: trade.tradeDate.toISOString().slice(0, 10), tradeNumber: trade.tradeNumber, profitLoss: round(profitLoss), balance: round(balance) };
-    })
+    { label: 'Initial Balance', date: initialDate, tradeNumber: null, profitLoss: 0, balance: round(initialBalance) },
+    ...reconstructRealizedBalances(trades, initialBalance).map(({ trade, netProfitLoss, balanceAfterTrade }) => ({
+      label: `Trade #${trade.tradeNumber}`,
+      date: (trade.closeTimeUtc || trade.openTimeUtc || trade.tradeDate).toISOString().slice(0, 10),
+      tradeNumber: trade.tradeNumber,
+      profitLoss: netProfitLoss,
+      balance: balanceAfterTrade
+    }))
   ];
 }

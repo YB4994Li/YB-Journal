@@ -4,7 +4,7 @@ import { BROKER_REQUIRED_FIELDS, normalizeHeaderToken, resolveHeaders } from '..
 import { ApiError } from '../utils/ApiError.js';
 import { nextTradeNumber, normalizeTrade, serializeTrade } from './tradeService.js';
 import { autoSessionFields } from './sessionService.js';
-import { syncPhaseBalance } from './statisticsService.js';
+import { recalculateJournalHistory } from './journalBalanceService.js';
 import { calculateTradeAnalytics, reconstructRealizedBalances } from './tradeCalculationService.js';
 import { normalizeMarketSymbol } from './marketAnalyticsService.js';
 import { ensureStrategy } from './tradingLibraryService.js';
@@ -95,7 +95,10 @@ function mapTemplateRow(row) {
 }
 
 export function mapExnessRow(row, format = 'EXNESS') {
-  const profitLoss = parseExnessProfit(row.profit);
+  const brokerProfit = Number(parseExnessProfit(row.profit) || 0);
+  const commission = Number(parseExnessProfit(row.commission) || 0);
+  const swap = Number(parseExnessProfit(row.swap) || 0);
+  const profitLoss = String(Number((brokerProfit + (row._profitIsNet ? 0 : commission + swap)).toFixed(2)));
   const { market, originalMarket } = normalizeExnessMarket(row.symbol);
   const sessionFields = autoSessionFields(row.opening_time_utc, row.closing_time_utc);
   return {
@@ -145,7 +148,12 @@ export function validateCsvRow(row, index, options = {}) {
   if (!['WIN', 'LOSS', 'BREAK_EVEN'].includes(data.result)) errors.push('result must be WIN, LOSS, or BREAK_EVEN');
 
   const normalized = normalizeTrade(data);
-  Object.assign(normalized, calculateTradeAnalytics(normalized,options.calculationContext||{}));
+  const calculationContext = options.calculationContext || {};
+  Object.assign(normalized, calculateTradeAnalytics(normalized, {
+    ...calculationContext,
+    instrumentSpecification: calculationContext.instrumentSpecifications?.get(normalized.market)
+      || calculationContext.instrumentSpecification
+  }));
   return { rowNumber: index + 2, valid: errors.length === 0, data: normalized, errors };
 }
 
@@ -183,15 +191,18 @@ function headerError(format, missingFields, detectedHeaders) {
   ]);
 }
 
-function rowsToObjects(dataRows, canonicalHeaders, headerCount) {
+function rowsToObjects(dataRows, canonicalHeaders, detectedHeaders) {
+  const profitIndex = canonicalHeaders.indexOf('profit');
+  const profitIsNet = profitIndex >= 0 && /net\s*profit/i.test(detectedHeaders[profitIndex]);
   return dataRows.map((values) => {
     const row = {};
     canonicalHeaders.forEach((header, index) => {
       if (header && row[header] == null) row[header] = values[index];
     });
-    if (values.length > headerCount && canonicalHeaders.at(-1) === 'profit') {
-      row.profit = [row.profit, ...values.slice(headerCount)].join(',');
+    if (values.length > detectedHeaders.length && canonicalHeaders.at(-1) === 'profit') {
+      row.profit = [row.profit, ...values.slice(detectedHeaders.length)].join(',');
     }
+    row._profitIsNet = profitIsNet;
     return { row, values };
   });
 }
@@ -212,7 +223,7 @@ export function parseCsv(buffer,calculationContext={}) {
 
   const rows = [];
   const skippedRows = [];
-  const rowObjects = rowsToObjects(parsed.data.slice(1), canonicalHeaders, detectedHeaders.length);
+  const rowObjects = rowsToObjects(parsed.data.slice(1), canonicalHeaders, detectedHeaders);
   for (let index = 0; index < rowObjects.length; index += 1) {
     const { row, values } = rowObjects[index];
     const populated = values.some((value) => String(value ?? '').trim() !== '');
@@ -228,6 +239,27 @@ export function parseCsv(buffer,calculationContext={}) {
     }
     const mapped = format === 'TEMPLATE' ? mapTemplateRow(row) : mapExnessRow(row, importSource);
     rows.push(validateCsvRow(mapped, index, { format,calculationContext }));
+  }
+
+  if (Number.isFinite(Number(calculationContext.initialCapital))) {
+    const validRows = rows.filter((row) => row.valid);
+    const history = reconstructRealizedBalances(validRows.map((row) => ({ ...row.data, _csvRowNumber: row.rowNumber })), Number(calculationContext.initialCapital));
+    const balances = new Map(history.map((item) => [item.trade._csvRowNumber, item]));
+    for (const row of validRows) {
+      const item = balances.get(row.rowNumber);
+      Object.assign(row.data, {
+        balanceBeforeTrade: String(item.balanceBeforeTrade),
+        balanceAfterTrade: String(item.balanceAfterTrade),
+        ...calculateTradeAnalytics(
+          { ...row.data, balanceBeforeTrade: item.balanceBeforeTrade, profitLoss: item.netProfitLoss },
+          {
+            ...calculationContext,
+            balanceBeforeTrade: item.balanceBeforeTrade,
+            instrumentSpecification: calculationContext.instrumentSpecifications?.get(row.data.market)
+          }
+        )
+      });
+    }
   }
 
   return {
@@ -300,6 +332,16 @@ export async function importRows(accountId, rows, sourceSummary = {}, requestedP
       }
     };
   }, { isolationLevel: 'Serializable', timeout: 20000 });
-  await syncPhaseBalance(requestedPhaseId ? Number(requestedPhaseId) : null);
+  const history = await recalculateJournalHistory(accountId, requestedPhaseId ? Number(requestedPhaseId) : null);
+  result.trades = await prisma.trade.findMany({
+    where: { id: { in: result.trades.map((trade) => trade.id) } },
+    include: { strategy: { select: { id: true, name: true, isArchived: true } } }
+  }).then((trades) => trades.map(serializeTrade));
+  const importedIds = new Set(result.trades.map((trade) => trade.id));
+  const importedHistory = history.filter((item) => importedIds.has(item.trade.id));
+  result.summary.tradesWithCalculatedRisk = importedHistory.filter((item) => ['CALCULATED', 'MANUAL'].includes(item.analytics.riskCalculationStatus)).length;
+  result.summary.tradesMissingSpecifications = importedHistory.filter((item) => item.analytics.riskCalculationError === 'MISSING_INSTRUMENT_SPECIFICATION').length;
+  result.summary.tradesMissingStopLoss = importedHistory.filter((item) => item.analytics.riskCalculationError === 'MISSING_STOP_LOSS').length;
+  result.summary.tradesMissingConversionRates = importedHistory.filter((item) => item.analytics.riskCalculationError === 'MISSING_CONVERSION_RATE').length;
   return result;
 }

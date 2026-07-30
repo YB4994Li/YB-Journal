@@ -3,6 +3,7 @@ import { success } from '../utils/response.js';
 import { ApiError } from '../utils/ApiError.js';
 import { getStatistics, getBalanceHistory } from '../services/statisticsService.js';
 import { getJournalFilterOptions, getMarketOptions, getMarketsAnalytics } from '../services/marketAnalyticsService.js';
+import { recalculateJournalHistory } from '../services/journalBalanceService.js';
 
 const decimalKeys = ['initialCapital', 'accountSize', 'initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage','breakEvenThresholdPercent'];
 const serialize = (value) => {
@@ -69,6 +70,9 @@ export async function updateAccount(req, res) {
   if (req.body.accountSize != null && existing.accountType === 'FUNDED') data.accountSize = String(req.body.accountSize);
   if(req.body.breakEvenThresholdPercent!=null)data.breakEvenThresholdPercent=String(req.body.breakEvenThresholdPercent);
   const account = await prisma.account.update({ where: { id: existing.id }, data, include: { phases: { orderBy: { orderIndex: 'asc' } }, _count: { select: { trades: true } } } });
+  if (existing.accountType === 'REAL' && (req.body.initialCapital != null || req.body.breakEvenThresholdPercent != null)) {
+    await recalculateJournalHistory(existing.id, null);
+  }
   success(res, serialize(account), 'Account updated successfully');
 }
 export async function archiveAccount(req,res){const account=await prisma.account.update({where:{id:Number(req.params.id)},data:{status:'ARCHIVED'}});success(res,serialize(account),'Account archived');}

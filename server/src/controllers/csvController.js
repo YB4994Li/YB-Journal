@@ -9,7 +9,8 @@ export async function preview(req, res) {
   if (!account) throw new ApiError(404, 'Account not found');
   const phase=req.query.phaseId?await prisma.accountPhase.findFirst({where:{id:Number(req.query.phaseId),accountId:account.id},select:{initialBalance:true,breakEvenThresholdPercent:true}}):null;
   if(req.query.phaseId&&!phase)throw new ApiError(422,'Import phase must belong to the selected account');
-  success(res, parseCsv(req.file.buffer,{initialCapital:Number(phase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(phase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent),accountCurrency:account.currency}), 'CSV preview generated successfully');
+  const specifications=await prisma.instrumentSpecification.findMany({where:{isActive:true}});
+  success(res, parseCsv(req.file.buffer,{initialCapital:Number(phase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(phase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent),accountCurrency:account.currency,instrumentSpecifications:new Map(specifications.map((item)=>[item.normalizedSymbol,item]))}), 'CSV preview generated successfully');
 }
 export async function confirm(req, res) {
   const result = await importRows(Number(req.params.accountId), req.body.rows, req.body.sourceSummary, req.body.phaseId);

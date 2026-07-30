@@ -12,8 +12,9 @@ export default function TradeViewModal({ trade, currency, onClose, onImage, onDe
     ['Stop loss',number(trade.stopLoss)],['Take profit',number(trade.takeProfit)],['Lot size',number(trade.lotSize)],
     ['Planned RR',<span>{number(trade.plannedRROverride ?? trade.plannedRR)}{trade.plannedRROverride == null && trade.plannedRR != null && <Auto/>}</span>],
     ['Realized R',<span>{number(trade.realizedRMultiple)}{trade.realizedRMultiple != null && <Auto/>}</span>],['Exit',number(trade.exitPrice)],
+    ['Risk amount',trade.riskAmount == null ? '—' : money(trade.riskAmount,currency)],
     ['Risk',<span>{trade.riskPercentageOverride ?? trade.riskPercentage == null ? '—' : `${number(trade.riskPercentageOverride ?? trade.riskPercentage)}%`}{trade.riskPercentageOverride == null && trade.riskPercentage != null && <Auto/>}</span>],
-    ['Balance before trade',money(trade.balanceBeforeTrade,currency)],['Result',trade.result?.replace('_',' ')],['P&L',money(trade.profitLoss,currency)]
+    ['Balance before trade',money(trade.balanceBeforeTrade,currency)],['Balance after trade',money(trade.balanceAfterTrade,currency)],['Result',trade.result?.replace('_',' ')],['P&L',money(trade.profitLoss,currency)]
   ];
   return <Modal open onClose={onClose} title={`Trade #${trade.tradeNumber}`} subtitle={`${trade.market} · ${trade.direction}`} wide>
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{entries.map(([label,value])=><div key={label} className="rounded-xl border border-line bg-ink/50 p-3"><p className="text-xs uppercase tracking-wider text-muted">{label}</p><p className="mt-1 font-medium">{value ?? '—'}</p></div>)}</div>
