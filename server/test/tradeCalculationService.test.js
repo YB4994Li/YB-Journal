@@ -1,23 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  breakEvenThresholdAmount,
   manualTradeAnalytics,
   classifyTradeResult,
   reconstructRealizedBalances
 } from '../src/services/tradeCalculationService.js';
 
-const context = { initialCapital: 10000, breakEvenThresholdPercent: 0.05 };
+const context = { initialCapital: 10000 };
 
-test('$10,000 at 0.05% produces a $5 break-even threshold', () => {
-  assert.equal(breakEvenThresholdAmount(10000, 0.05), 5);
-});
-
-test('break-even classification uses inclusive boundaries', () => {
-  assert.equal(classifyTradeResult(5, 10000, 0.05), 'BREAK_EVEN');
-  assert.equal(classifyTradeResult(-5, 10000, 0.05), 'BREAK_EVEN');
-  assert.equal(classifyTradeResult(5.01, 10000, 0.05), 'WIN');
-  assert.equal(classifyTradeResult(-5.01, 10000, 0.05), 'LOSS');
+test('simple result classification has no configurable threshold', () => {
+  assert.equal(classifyTradeResult(0), 'BREAK_EVEN');
+  assert.equal(classifyTradeResult(0.01), 'WIN');
+  assert.equal(classifyTradeResult(-0.01), 'LOSS');
 });
 
 test('manual result override remains unchanged', () => {

@@ -1,16 +1,10 @@
 const numeric = (value) => value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
 const round = (value, digits = 2) => Number(Number(value).toFixed(digits));
 
-export function breakEvenThresholdAmount(initialCapital, thresholdPercent = 0.05) {
-  if (!numeric(initialCapital) || !numeric(thresholdPercent)) return 0;
-  return round(Number(initialCapital) * Number(thresholdPercent) / 100);
-}
-
-export function classifyTradeResult(profitLoss, initialCapital, thresholdPercent = 0.05) {
+export function classifyTradeResult(profitLoss) {
   const pnl = numeric(profitLoss) ? Number(profitLoss) : 0;
-  const threshold = breakEvenThresholdAmount(initialCapital, thresholdPercent);
-  if (Math.abs(pnl) <= threshold) return 'BREAK_EVEN';
-  return pnl > threshold ? 'WIN' : 'LOSS';
+  if (pnl === 0) return 'BREAK_EVEN';
+  return pnl > 0 ? 'WIN' : 'LOSS';
 }
 
 // Risk analytics are intentionally disabled. Only explicit manual inputs are retained.
@@ -26,7 +20,7 @@ export function manualTradeAnalytics(data, context = {}) {
     riskPercentage: null,
     result: manualResult && ['WIN', 'LOSS', 'BREAK_EVEN'].includes(data.result)
       ? data.result
-      : classifyTradeResult(data.profitLoss, context.initialCapital, context.breakEvenThresholdPercent),
+      : classifyTradeResult(data.profitLoss),
     resultSource: manualResult ? 'MANUAL' : 'AUTO',
     calculationStatus: manualRiskAmount !== null || data.plannedRROverride != null || data.riskPercentageOverride != null ? 'MANUAL' : 'UNAVAILABLE',
     calculationWarnings: [],

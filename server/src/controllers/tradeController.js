@@ -6,6 +6,7 @@ import { removeScreenshot } from '../utils/files.js';
 import { recalculateJournalHistory } from '../services/journalBalanceService.js';
 import { manualTradeAnalytics } from '../services/tradeCalculationService.js';
 import { ensureStrategy } from '../services/tradingLibraryService.js';
+import { assertTradingAllowed } from '../services/lifecycleService.js';
 
 async function findTrade(id) {
   const trade = await prisma.trade.findUnique({ where: { id },include:{strategy:{select:{id:true,name:true,isArchived:true}}} });
@@ -30,6 +31,7 @@ export async function create(req, res) {
 export async function update(req, res) {
   const existing = await findTrade(Number(req.params.id));
   const phaseId = req.body.phaseId == null || req.body.phaseId === '' ? existing.phaseId : Number(req.body.phaseId);
+  if(phaseId!==existing.phaseId)await assertTradingAllowed(prisma,{accountId:existing.accountId,phaseId});
   if (phaseId) {
     const phase = await prisma.accountPhase.findFirst({ where: { id: phaseId, accountId: existing.accountId } });
     if (!phase) throw new ApiError(422, 'Trade phase must belong to the selected account');
@@ -39,8 +41,7 @@ export async function update(req, res) {
   if(req.body.strategyId&&!strategy)throw new ApiError(422,'Selected strategy does not exist');
   normalized.strategyId=strategy?.id||null;
   normalized.strategyName=null;
-  const context=phaseId?await prisma.accountPhase.findUnique({where:{id:phaseId},select:{initialBalance:true,breakEvenThresholdPercent:true,account:{select:{currency:true}}}}):await prisma.account.findUnique({where:{id:existing.accountId},select:{initialCapital:true,breakEvenThresholdPercent:true,currency:true}});
-  Object.assign(normalized, manualTradeAnalytics({ ...normalized, manualRiskProvided: Object.hasOwn(req.body, 'riskAmount') && req.body.riskAmount !== '' && req.body.riskAmount != null }, { initialCapital:Number(context.initialBalance??context.initialCapital),breakEvenThresholdPercent:Number(context.breakEvenThresholdPercent) }));
+  Object.assign(normalized, manualTradeAnalytics({ ...normalized, manualRiskProvided: Object.hasOwn(req.body, 'riskAmount') && req.body.riskAmount !== '' && req.body.riskAmount != null }));
   const trade = await prisma.trade.update({ where: { id: existing.id }, data: { ...normalized, phaseId },include:{strategy:{select:{id:true,name:true,isArchived:true}}} });
   await recalculateJournalHistory(existing.accountId, phaseId);
   if (existing.phaseId !== phaseId) await recalculateJournalHistory(existing.accountId, existing.phaseId);
@@ -66,6 +67,7 @@ export async function bulkRemove(req, res) {
 }
 export async function duplicate(req, res) {
   const source = await findTrade(Number(req.params.id));
+  await assertTradingAllowed(prisma,{accountId:source.accountId,phaseId:source.phaseId});
   const copy = await prisma.$transaction(async (tx) => {
     const tradeNumber = await nextTradeNumber(source.accountId, tx);
     const { id, createdAt, updatedAt, screenshotPath, ...data } = source;

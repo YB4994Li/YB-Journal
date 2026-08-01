@@ -19,6 +19,7 @@ router.patch('/:accountId', idParam('accountId'), validate, asyncHandler(control
 router.delete('/:id', idParam(), validate, asyncHandler(controller.deleteAccount));
 router.post('/:id/archive', idParam(), validate, asyncHandler(controller.archiveAccount));
 router.post('/:id/restore', idParam(), validate, asyncHandler(controller.restoreAccount));
+router.post('/:id/reactivate', idParam(), validate, asyncHandler(controller.reactivateAccount));
 router.get('/:id/statistics', idParam(), validate, asyncHandler(controller.statistics));
 router.get('/:id/balance-history', idParam(), validate, asyncHandler(controller.balanceHistory));
 router.get('/:id/markets', idParam(), validate, asyncHandler(controller.markets));

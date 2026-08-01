@@ -8,6 +8,7 @@ import { recalculateJournalHistory } from './journalBalanceService.js';
 import { manualTradeAnalytics, reconstructRealizedBalances } from './tradeCalculationService.js';
 import { normalizeMarketSymbol } from './marketAnalyticsService.js';
 import { ensureStrategy } from './tradingLibraryService.js';
+import { assertTradingAllowed, reconcileFundedAccountLifecycle } from './lifecycleService.js';
 
 export const csvColumns = ['strategy', 'market', 'date', 'session', 'timeframe', 'direction', 'entryPrice', 'stopLoss', 'takeProfit', 'lotSize', 'riskAmount', 'balanceBeforeTrade', 'exitPrice', 'result', 'profitLoss', 'emotion'];
 
@@ -277,16 +278,17 @@ export function parseCsv(buffer,calculationContext={}) {
 
 export async function importRows(accountId, rows, sourceSummary = {}, requestedPhaseId = null) {
   if (!Array.isArray(rows) || !rows.length) throw new ApiError(422, 'No rows were provided for import');
-  const checked = rows.map((row, index) => validateCsvRow(row, index, { format: row.importSource || 'TEMPLATE' }));
+  const checked = rows.map((row, index) => validateCsvRow(row, index, { format: row.importSource || 'TEMPLATE' })).sort((a,b)=>new Date(a.data.closeTimeUtc||a.data.openTimeUtc||a.data.tradeDate)-new Date(b.data.closeTimeUtc||b.data.openTimeUtc||b.data.tradeDate)||a.rowNumber-b.rowNumber);
   if (checked.some((row) => !row.valid)) throw new ApiError(422, 'Confirmed rows contain validation errors', checked.filter((row) => !row.valid));
 
   const result = await prisma.$transaction(async (tx) => {
-    const account = await tx.account.findUnique({ where: { id: accountId }, select: { id: true, accountType: true, initialCapital: true, currency: true,breakEvenThresholdPercent:true } });
+    const account = await tx.account.findUnique({ where: { id: accountId }, select: { id: true, accountType: true, initialCapital: true, currency: true } });
     if (!account) throw new ApiError(404, 'Account not found');
     const phaseId = requestedPhaseId == null || requestedPhaseId === '' ? null : Number(requestedPhaseId);
     if (account.accountType === 'FUNDED' && !phaseId) throw new ApiError(422, 'Select a destination phase before importing into a funded account');
-    const destinationPhase=phaseId?await tx.accountPhase.findFirst({ where: { id: phaseId, accountId }, select: { id:true,initialBalance:true,breakEvenThresholdPercent:true } }):null;
+    const destinationPhase=phaseId?await tx.accountPhase.findFirst({ where: { id:phaseId,accountId },select:{id:true,initialBalance:true,maximumLossPercentage:true,status:true} }):null;
     if (phaseId && !destinationPhase) throw new ApiError(422, 'Import phase must belong to the selected account');
+    await assertTradingAllowed(tx,{accountId,phaseId});
     const sourceIds = checked.map((row) => row.data.sourceTradeId).filter(Boolean);
     const existing = sourceIds.length ? await tx.trade.findMany({
       where: { accountId, sourceTradeId: { in: sourceIds } },
@@ -304,6 +306,7 @@ export async function importRows(accountId, rows, sourceSummary = {}, requestedP
       ...checked.map((row, rowNumber) => ({ ...row.data, rowNumber, _previewKey: rowNumber }))
     ], initialBalance).map(({ trade, balanceBeforeTrade }) => [trade._previewKey ?? `existing-${trade.id}`, balanceBeforeTrade]));
     const created = [];
+    let blockedAfterStatusChange=0, triggerTradeId=null, resultingPhaseStatus=destinationPhase?.status;
     for (let rowIndex = 0; rowIndex < checked.length; rowIndex += 1) {
       const row = checked[rowIndex];
       const key = row.data.sourceTradeId ? `${row.data.importSource}:${row.data.sourceTradeId}` : null;
@@ -313,9 +316,11 @@ export async function importRows(accountId, rows, sourceSummary = {}, requestedP
       }
       if (key) seen.add(key);
       const balanceBeforeTrade = balanceMap.get(rowIndex);
-      const analytics = manualTradeAnalytics({ ...row.data,resultSource:row.data.resultSource||'AUTO' }, { initialCapital:Number(destinationPhase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(destinationPhase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent) });
+      const analytics = manualTradeAnalytics({ ...row.data,resultSource:row.data.resultSource||'AUTO' });
       const strategy=await ensureStrategy(tx,row.data.strategyName);
-      created.push(await tx.trade.create({ data: { ...row.data, ...analytics, strategyId:strategy?.id||null, strategyName:null, balanceBeforeTrade: String(balanceBeforeTrade), accountId, phaseId, tradeNumber: number++ },include:{strategy:{select:{id:true,name:true,isArchived:true}}} }));
+      const imported=await tx.trade.create({ data: { ...row.data, ...analytics, strategyId:strategy?.id||null, strategyName:null, balanceBeforeTrade: String(balanceBeforeTrade), accountId, phaseId, tradeNumber: number++ },include:{strategy:{select:{id:true,name:true,isArchived:true}}} });
+      created.push(imported);
+      if(phaseId){const lifecycle=await reconcileFundedAccountLifecycle(tx,accountId),current=lifecycle.find((item)=>item.id===phaseId);resultingPhaseStatus=current.status;if(current.status!=='ACTIVE'){triggerTradeId=imported.id;blockedAfterStatusChange=checked.length-rowIndex-1;break;}}
     }
     return {
       trades: created.map(serializeTrade),
@@ -324,7 +329,7 @@ export async function importRows(accountId, rows, sourceSummary = {}, requestedP
         imported: created.length,
         skippedEmpty: Math.max(0, Number(sourceSummary.skippedEmpty) || 0),
         duplicates,
-        failedRows: Math.max(0, Number(sourceSummary.failedRows) || 0)
+        failedRows: Math.max(0, Number(sourceSummary.failedRows) || 0), blockedAfterStatusChange, phaseStatus:resultingPhaseStatus, triggerTradeId
       }
     };
   }, { isolationLevel: 'Serializable', timeout: 20000 });

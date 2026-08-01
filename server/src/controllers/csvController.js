@@ -5,11 +5,11 @@ import { prisma } from '../config/prisma.js';
 
 export async function preview(req, res) {
   if (!req.file) throw new ApiError(400, 'CSV file is required');
-  const account = await prisma.account.findUnique({ where: { id: Number(req.params.accountId) }, select: { id: true,initialCapital:true,breakEvenThresholdPercent:true } });
+  const account = await prisma.account.findUnique({ where: { id: Number(req.params.accountId) }, select: { id: true,initialCapital:true } });
   if (!account) throw new ApiError(404, 'Account not found');
-  const phase=req.query.phaseId?await prisma.accountPhase.findFirst({where:{id:Number(req.query.phaseId),accountId:account.id},select:{initialBalance:true,breakEvenThresholdPercent:true}}):null;
+  const phase=req.query.phaseId?await prisma.accountPhase.findFirst({where:{id:Number(req.query.phaseId),accountId:account.id},select:{initialBalance:true}}):null;
   if(req.query.phaseId&&!phase)throw new ApiError(422,'Import phase must belong to the selected account');
-  success(res, parseCsv(req.file.buffer,{initialCapital:Number(phase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(phase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent)}), 'CSV preview generated successfully');
+  success(res, parseCsv(req.file.buffer), 'CSV preview generated successfully');
 }
 export async function confirm(req, res) {
   const result = await importRows(Number(req.params.accountId), req.body.rows, req.body.sourceSummary, req.body.phaseId);

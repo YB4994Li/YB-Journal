@@ -4,37 +4,44 @@ import { ApiError } from '../utils/ApiError.js';
 import { getStatistics, getBalanceHistory } from '../services/statisticsService.js';
 import { getJournalFilterOptions, getMarketOptions, getMarketsAnalytics } from '../services/marketAnalyticsService.js';
 import { recalculateJournalHistory } from '../services/journalBalanceService.js';
+import { realizedLifecycle, reconcileFundedAccountLifecycle, reconcileRealAccount } from '../services/lifecycleService.js';
 
-const decimalKeys = ['initialCapital', 'accountSize', 'initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage','breakEvenThresholdPercent'];
+const decimalKeys = ['initialCapital', 'accountSize', 'initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage'];
 const serialize = (value) => {
   if (!value) return value;
   if (Array.isArray(value)) return value.map(serialize);
   const result = { ...value };
   for (const key of decimalKeys) if (result[key] != null) result[key] = Number(result[key]);
-  if (result.phases) result.phases = result.phases.map(serialize);
+  if (result.initialBalance != null && result.currentBalance != null) Object.assign(result,realizedLifecycle(result.initialBalance,result.currentBalance,result.profitTargetPercentage,result.maximumLossPercentage));
+  if (result.phases) result.phases = result.phases.map(serialize).map((phase,index,all)=>({...phase,canActivate:phase.status==='LOCKED'&&(index===0||all[index-1].status==='PASSED')}));
   return result;
 };
 const text = (value) => String(value ?? '').trim() || null;
 const phaseData = (phase, orderIndex) => ({
-  name: phase.name.trim(), phaseType: phase.phaseType, status: phase.status,
+  name: phase.name.trim(), phaseType: phase.phaseType, status: orderIndex === 0 ? 'ACTIVE' : 'LOCKED',
   orderIndex, initialBalance: String(phase.initialBalance), currentBalance: String(phase.initialBalance),
   profitTargetPercentage: phase.profitTargetPercentage === '' || phase.profitTargetPercentage == null ? null : String(phase.profitTargetPercentage),
   maximumLossPercentage: phase.maximumLossPercentage === '' || phase.maximumLossPercentage == null ? null : String(phase.maximumLossPercentage),
   dailyLossLimitPercentage: phase.dailyLossLimitPercentage === '' || phase.dailyLossLimitPercentage == null ? null : String(phase.dailyLossLimitPercentage),
   minimumTradingDays: phase.minimumTradingDays === '' || phase.minimumTradingDays == null ? null : Number(phase.minimumTradingDays),
-  breakEvenThresholdPercent:String(phase.breakEvenThresholdPercent??0.05),
   startDate: phase.status === 'ACTIVE' ? new Date() : null, notes: text(phase.notes)
 });
 
 export async function listAccounts(req, res) {
-  const accounts = await prisma.account.findMany({ where:req.query.includeArchived==='true'?{}:{status:{not:'ARCHIVED'}},orderBy: [{ displayOrder:'asc' },{ createdAt: 'asc' }], include: {
+  const where=req.query.includeArchived==='true'?{}:{status:{not:'ARCHIVED'}};
+  const funded=await prisma.account.findMany({where:{...where,accountType:'FUNDED'},select:{id:true}});
+  for(const {id} of funded)await prisma.$transaction((tx)=>reconcileFundedAccountLifecycle(tx,id));
+  const accounts = await prisma.account.findMany({ where,orderBy: [{ displayOrder:'asc' },{ createdAt: 'asc' }], include: {
     phases: { orderBy: { orderIndex: 'asc' }, include: { _count: { select: { trades: true } } } },
     _count: { select: { trades: true } }
   } });
   success(res, accounts.map(serialize), 'Accounts retrieved successfully');
 }
 export async function getAccount(req, res) {
-  const account = await prisma.account.findUnique({ where: { id: Number(req.params.accountId ?? req.params.id) }, include: {
+  const id=Number(req.params.accountId??req.params.id);
+  const type=await prisma.account.findUnique({where:{id},select:{accountType:true}});
+  if(type?.accountType==='FUNDED')await prisma.$transaction((tx)=>reconcileFundedAccountLifecycle(tx,id));
+  const account = await prisma.account.findUnique({ where: { id }, include: {
     phases: { orderBy: { orderIndex: 'asc' }, include: { _count: { select: { trades: true } } } },
     _count: { select: { trades: true } }
   } });
@@ -52,7 +59,7 @@ export async function createAccount(req, res) {
       initialCapital: String(funded ? req.body.accountSize : req.body.initialCapital),
       accountSize: funded ? String(req.body.accountSize) : null,
       broker: text(req.body.broker), propFirm: funded ? text(req.body.propFirm) : null,
-      platform: text(req.body.platform), notes: text(req.body.notes), externalReference:text(req.body.externalReference),breakEvenThresholdPercent:String(req.body.breakEvenThresholdPercent??0.05),
+      platform: text(req.body.platform), notes: text(req.body.notes), externalReference:text(req.body.externalReference), maximumLossPercentage:funded?null:(req.body.maximumLossPercentage==null||req.body.maximumLossPercentage===''?null:String(req.body.maximumLossPercentage)),
       phases: funded ? { create: phases.map(phaseData) } : undefined
     },
     include: { phases: { orderBy: { orderIndex: 'asc' } }, _count: { select: { trades: true } } }
@@ -68,15 +75,21 @@ export async function updateAccount(req, res) {
   for (const key of ['status','displayOrder']) if (key in req.body) data[key]=key==='displayOrder'?Number(req.body[key]):req.body[key];
   if (req.body.initialCapital != null && existing.accountType === 'REAL') data.initialCapital = String(req.body.initialCapital);
   if (req.body.accountSize != null && existing.accountType === 'FUNDED') data.accountSize = String(req.body.accountSize);
-  if(req.body.breakEvenThresholdPercent!=null)data.breakEvenThresholdPercent=String(req.body.breakEvenThresholdPercent);
+  if(existing.accountType==='REAL'&&'maximumLossPercentage' in req.body)data.maximumLossPercentage=req.body.maximumLossPercentage===''||req.body.maximumLossPercentage==null?null:String(req.body.maximumLossPercentage);
   const account = await prisma.account.update({ where: { id: existing.id }, data, include: { phases: { orderBy: { orderIndex: 'asc' } }, _count: { select: { trades: true } } } });
-  if (existing.accountType === 'REAL' && (req.body.initialCapital != null || req.body.breakEvenThresholdPercent != null)) {
+  if (existing.accountType === 'REAL' && (req.body.initialCapital != null || 'maximumLossPercentage' in req.body)) {
     await recalculateJournalHistory(existing.id, null);
   }
   success(res, serialize(account), 'Account updated successfully');
 }
 export async function archiveAccount(req,res){const account=await prisma.account.update({where:{id:Number(req.params.id)},data:{status:'ARCHIVED'}});success(res,serialize(account),'Account archived');}
 export async function restoreAccount(req,res){const account=await prisma.account.update({where:{id:Number(req.params.id)},data:{status:'ACTIVE'}});success(res,serialize(account),'Account restored');}
+export async function reactivateAccount(req,res){
+  const id=Number(req.params.id); const state=await reconcileRealAccount(prisma,id);
+  if(state.accountType!=='REAL'||state.status!=='FAILED')throw new ApiError(409,'Only failed real accounts can be reactivated');
+  if(state.failureBalance==null||state.currentRealizedBalance<=state.failureBalance)throw new ApiError(409,`Account cannot be reactivated. Current balance must be above ${state.failureBalance}.`);
+  success(res,serialize(await prisma.account.update({where:{id},data:{status:'ACTIVE'}})),'Account reactivated');
+}
 export async function deleteAccount(req, res) {
   await prisma.account.delete({ where: { id: Number(req.params.accountId ?? req.params.id) } });
   success(res, null, 'Account, phases, and related trades deleted successfully');

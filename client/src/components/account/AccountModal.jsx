@@ -3,7 +3,7 @@ import Modal from '../ui/Modal.jsx';
 import AccountTypeSelector from './AccountTypeSelector.jsx';
 import FundedChallengeSetup, { generatePhases } from './FundedChallengeSetup.jsx';
 
-const blank={name:'',accountType:'REAL',currency:'USD',broker:'',propFirm:'',platform:'',externalReference:'',status:'ACTIVE',breakEvenThresholdPercent:'0.05',notes:'',initialCapital:'',accountSize:''};
+const blank={name:'',accountType:'REAL',currency:'USD',broker:'',propFirm:'',platform:'',externalReference:'',status:'ACTIVE',maximumLossPercentage:'',notes:'',initialCapital:'',accountSize:''};
 export default function AccountModal({ open, account, onClose, onSave, onDelete, busy }) {
   const [form,setForm]=useState(blank),[phaseMode,setPhaseMode]=useState('2'),[phases,setPhases]=useState([]);
   useEffect(()=>{if(!open)return;if(account){setForm({...blank,...account});setPhases(account.phases||[]);}else{setForm(blank);setPhaseMode('2');setPhases([]);}},[open,account]);
@@ -21,7 +21,7 @@ export default function AccountModal({ open, account, onClose, onSave, onDelete,
         <div><label className="label">Platform</label><input className="field" value={form.platform||''} onChange={(e)=>set('platform',e.target.value)}/></div>
         <div><label className="label">External reference</label><input className="field" value={form.externalReference||''} onChange={(e)=>set('externalReference',e.target.value)}/></div>
         {account&&<div><label className="label">Status</label><select className="field" value={form.status||'ACTIVE'} onChange={(e)=>set('status',e.target.value)}>{['ACTIVE','PAUSED','PASSED','FAILED','CLOSED','ARCHIVED'].map((value)=><option key={value}>{value}</option>)}</select></div>}
-        <div><label className="label">Break-even threshold %</label><input className="field" type="number" min="0" step="0.0001" value={form.breakEvenThresholdPercent??'0.05'} onChange={(e)=>set('breakEvenThresholdPercent',e.target.value)}/><p className="mt-1 text-xs text-muted">Current amount: {Number(form.initialCapital||form.accountSize)>0?`${form.currency} ${(Number(form.initialCapital||form.accountSize)*Number(form.breakEvenThresholdPercent||0)/100).toFixed(2)}`:'enter a balance'}</p></div>
+        {form.accountType==='REAL'&&<div><label className="label">Maximum loss % (optional)</label><input className="field" type="number" min="0.001" max="100" step="0.1" value={form.maximumLossPercentage??''} onChange={(e)=>set('maximumLossPercentage',e.target.value)}/></div>}
         {form.accountType==='REAL'?<div><label className="label">Initial capital</label><input className="field" required min="0" step="0.01" type="number" value={form.initialCapital} onChange={(e)=>set('initialCapital',e.target.value)}/></div>:<div><label className="label">Account size</label><input className="field" required min="0.01" step="0.01" type="number" value={form.accountSize||''} onChange={(e)=>set('accountSize',e.target.value)}/></div>}
       </div>
       <div><label className="label">Notes</label><textarea className="field min-h-20" maxLength="5000" value={form.notes||''} onChange={(e)=>set('notes',e.target.value)}/></div>

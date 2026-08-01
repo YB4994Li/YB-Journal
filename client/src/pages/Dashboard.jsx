@@ -30,10 +30,12 @@ export default function Dashboard() {
   const [editing,setEditing]=useState(null), [viewing,setViewing]=useState(null), [image,setImage]=useState(null), [confirm,setConfirm]=useState(null), [busy,setBusy]=useState(false), [toast,setToast]=useState(null);
   const [selectedIds,setSelectedIds]=useState(()=>new Set()), [selectingAll,setSelectingAll]=useState(false);
   const [phaseId,setPhaseId]=useState(null), [phaseSettings,setPhaseSettings]=useState(false);
-  const [filterOptions,setFilterOptions]=useState({markets:[],strategies:[],timeframes:[]}), [marketRefreshKey,setMarketRefreshKey]=useState(0);
+  const [filterOptions,setFilterOptions]=useState({markets:[],strategies:[],timeframes:[]}), [marketRefreshKey,setMarketRefreshKey]=useState(0), [updating,setUpdating]=useState(false);
   const debouncedSearch=useDebounce(filters.search);
   const account=accounts.find((item)=>item.id===accountId);
   const phases=account?.phases||[], phase=phases.find((item)=>item.id===phaseId);
+  const canTrade=Boolean(account)&&account.status==='ACTIVE'&&(account.accountType!=='FUNDED'||phase?.status==='ACTIVE');
+  const blockedMessage=account?.status==='FAILED'?'Account loss limit reached.':phase?.status==='FAILED'?'Maximum loss limit reached.':phase?.status==='LOCKED'?'Complete the previous phase to unlock this phase.':null;
   const notify=(message,type='success')=>{setToast({message,type});setTimeout(()=>setToast(null),4500);};
 
   const loadAccounts=useCallback(async()=>{
@@ -50,7 +52,15 @@ export default function Dashboard() {
     try{const params={...current,search:debouncedSearch,...(currentPhaseId?{phaseId:currentPhaseId}:{})};Object.keys(params).forEach((k)=>params[k]===''&&delete params[k]);const {data}=await api.get(`/accounts/${id}/trades`,{params});setTrades(data.data);}
     catch(e){setError(errorMessage(e));}finally{setTableLoading(false);}
   },[debouncedSearch]);
-  const refreshAll=useCallback(async()=>{await Promise.all([refreshSummary(accountId,phaseId),loadTrades(accountId,filters,phaseId)]);setMarketRefreshKey((value)=>value+1);},[accountId,phaseId,filters,refreshSummary,loadTrades]);
+  const refreshJournalData=useCallback(async()=>{
+    if(!accountId)return;
+    setUpdating(true);
+    try{
+      await loadAccounts();
+      await Promise.all([refreshSummary(accountId,phaseId),loadTrades(accountId,filters,phaseId)]);
+      setMarketRefreshKey((value)=>value+1);
+    }finally{setUpdating(false);}
+  },[accountId,phaseId,filters,loadAccounts,refreshSummary,loadTrades]);
   useEffect(()=>{(async()=>{try{await loadAccounts();}catch(e){notify(errorMessage(e),'error');}finally{setLoading(false);}})();},[loadAccounts]);
   useEffect(()=>{if(!account)return;if(account.accountType==='FUNDED'){const requested=Number(new URLSearchParams(window.location.search).get('phaseId')),next=account.phases.find((item)=>item.id===requested)||account.phases.find((item)=>item.status==='ACTIVE')||account.phases[0];setPhaseId((current)=>account.phases.some((item)=>item.id===current)?current:next?.id||null);}else setPhaseId(null);},[account]);
   useEffect(()=>{if(accountId&&(!account||account.accountType==='REAL'||phaseId)){refreshSummary(accountId,phaseId).catch((e)=>notify(errorMessage(e),'error'));}},[accountId,phaseId,account?.accountType,refreshSummary]);
@@ -66,25 +76,22 @@ export default function Dashboard() {
     setBusy(true);try{
       const payload={...form,...(account?.accountType==='FUNDED'?{phaseId}: {})};const response=editing?await api.put(`/trades/${editing.id}`,payload):await api.post(`/accounts/${accountId}/trades`,payload);const trade=response.data.data;
       if(screenshot){const body=new FormData();body.append('screenshot',screenshot);await api.post(`/trades/${trade.id}/screenshot`,body);}
-      notify(editing?'Trade updated successfully':'Trade created successfully');setTradeModal(false);setEditing(null);await refreshAll();
+      await refreshJournalData();notify(editing?'Trade updated successfully':'Trade created successfully');setTradeModal(false);setEditing(null);
     }catch(e){notify(errorMessage(e),'error');}finally{setBusy(false);}
   };
-  const duplicate=async(trade)=>{try{const {data}=await api.post(`/trades/${trade.id}/duplicate`);notify(data.message);await refreshAll();}catch(e){notify(errorMessage(e),'error');}};
+  const duplicate=async(trade)=>{if(busy||updating)return;setBusy(true);try{const {data}=await api.post(`/trades/${trade.id}/duplicate`);await refreshJournalData();notify(data.message);}catch(e){notify(errorMessage(e),'error');}finally{setBusy(false);}};
   const executeDelete=async()=>{
     if(!confirm)return;setBusy(true);try{
       if(confirm.type==='phaseAction'){
-        const next=confirm.action==='pass'?phases.find((item)=>item.orderIndex>confirm.item.orderIndex&&item.status==='PENDING'):null;
-        if(confirm.action==='archive')await api.patch(`/phases/${confirm.item.id}`,{status:'ARCHIVED'});else await api.post(`/phases/${confirm.item.id}/${confirm.action}`);
-        notify(`Phase ${confirm.action} action completed`);setPhaseSettings(false);await reloadAccount();
-        setConfirm(next?{type:'activateNext',item:next,previousName:confirm.item.name}:null);return;
+        await api.post(`/phases/${confirm.item.id}/archive`);notify('Phase archived');setPhaseSettings(false);setConfirm(null);await reloadAccount();return;
       }
-      if(confirm.type==='activateNext'){await api.post(`/phases/${confirm.item.id}/activate`);setPhaseId(confirm.item.id);setConfirm(null);await loadAccounts();notify(`${confirm.item.name} activated`);return;}
+      if(confirm.type==='phaseReevaluate'){await api.patch(`/phases/${confirm.item.id}`,{...confirm.form,confirmLifecycleReevaluation:true});notify('Phase settings saved and lifecycle re-evaluated');setPhaseSettings(false);setConfirm(null);await reloadAccount();return;}
       if(confirm.type==='account'){await api.delete(`/accounts/${accountId}`);setAccountSettings(false);setAccountId(null);await loadAccounts();}
       else if(confirm.type==='phase'){await api.delete(`/phases/${phaseId}`);setPhaseSettings(false);setPhaseId(null);await loadAccounts();}
       else if(confirm.type==='bulk'){
         const {data}=await api.delete('/trades/bulk',{data:{tradeIds:[...selectedIds]}});
-        setSelectedIds(new Set());await refreshAll();notify(`${data.data.deletedCount} selected trades deleted successfully`);setConfirm(null);return;
-      }else{await api.delete(`/trades/${confirm.item.id}`);await refreshAll();}
+        setSelectedIds(new Set());await refreshJournalData();notify(`${data.data.deletedCount} selected trades deleted successfully`);setConfirm(null);return;
+      }else{await api.delete(`/trades/${confirm.item.id}`);await refreshJournalData();}
       notify(confirm.type==='account'?'Account deleted':'Trade deleted');setConfirm(null);
     }catch(e){notify(errorMessage(e),'error');}finally{setBusy(false);}
   };
@@ -97,10 +104,8 @@ export default function Dashboard() {
       const {data}=await api.get(`/accounts/${accountId}/trades/ids`,{params});setSelectedIds(new Set(data.data));
     }catch(e){notify(errorMessage(e),'error');}finally{setSelectingAll(false);}
   };
-  const reloadAccount=async()=>{await loadAccounts();await refreshAll();};
-  const phaseAction=(action)=>setConfirm({type:'phaseAction',action,item:phase});
-  const savePhase=async(form)=>{setBusy(true);try{await api.patch(`/phases/${phaseId}`,form);notify('Phase updated');setPhaseSettings(false);await reloadAccount();}catch(e){notify(errorMessage(e),'error');}finally{setBusy(false);}};
-  const addPhase=async()=>{setBusy(true);try{const {data}=await api.post(`/accounts/${accountId}/phases`,{name:`Custom phase ${phases.length+1}`,phaseType:'CUSTOM',status:'PENDING',initialBalance:account.accountSize||account.initialCapital,profitTargetPercentage:'',maximumLossPercentage:'',dailyLossLimitPercentage:'',minimumTradingDays:0});await loadAccounts();setPhaseId(data.data.id);notify('Custom phase added');}catch(e){notify(errorMessage(e),'error');}finally{setBusy(false);}};
+  const reloadAccount=refreshJournalData;
+  const savePhase=async(form)=>{const changed=['initialBalance','profitTargetPercentage','maximumLossPercentage'].some((key)=>String(form[key]??'')!==String(phase[key]??''));if(['PASSED','FAILED'].includes(phase.status)&&changed){setConfirm({type:'phaseReevaluate',item:phase,form});return;}setBusy(true);try{await api.patch(`/phases/${phaseId}`,form);notify('Phase updated');setPhaseSettings(false);await reloadAccount();}catch(e){notify(errorMessage(e),'error');}finally{setBusy(false);}};
   const deleteScreenshot=async()=>{try{await api.delete(`/trades/${viewing.id}/screenshot`);setViewing({...viewing,screenshotPath:null});notify('Screenshot deleted');await loadTrades(accountId,filters);}catch(e){notify(errorMessage(e),'error');}};
   const cards=useMemo(()=>[
     ['Current balance',stats&&money(stats.currentBalance,account?.currency),stats&&`${stats.netProfitLoss>=0?'+':''}${money(stats.netProfitLoss,account?.currency)} net`],
@@ -108,9 +113,9 @@ export default function Dashboard() {
     ['Total trades',stats?.totalTrades??'—','Recorded journal entries']
   ],[stats,account]);
   const confirmationDetails=(()=>{
-    if(confirm?.type==='activateNext')return{title:`Activate ${confirm.item.name}?`,message:`${confirm.previousName} has been marked as passed. Would you like to activate ${confirm.item.name} now?`,confirmLabel:`Activate ${confirm.item.name}`,cancelLabel:'Not now',variant:'SUCCESS'};
+    if(confirm?.type==='phaseReevaluate')return{title:`Re-evaluate ${confirm.item.name}?`,message:'Changing these financial rules may change this phase status and lock or activate later phases.',confirmLabel:'Save and re-evaluate',variant:'WARNING'};
     if(confirm?.type==='phaseAction'){
-      const labels={pass:['Mark as passed','This will mark the current phase as passed. You can optionally activate the next phase afterward.','SUCCESS'],fail:['Mark as failed','This will mark the current phase as failed.','DANGER'],activate:['Activate phase','This will make this phase active and deactivate any other active phase.','SUCCESS'],archive:['Archive phase','The phase and its trades will be preserved, but the phase will be archived.','WARNING']};
+      const labels={archive:['Archive phase','The phase and its trades will be preserved, but the phase will be archived.','WARNING']};
       const [label,message,variant]=labels[confirm.action];return{title:confirm.action==='pass'?`Mark ${confirm.item.name} as passed?`:`${label} — ${confirm.item.name}?`,message,confirmLabel:label,variant};
     }
     if(confirm?.type==='account')return{title:'Delete account?',message:'This permanently deletes the account, all phases, and every related trade.',confirmLabel:'Delete account',variant:'DANGER'};
@@ -129,7 +134,7 @@ export default function Dashboard() {
           <p className="text-xs text-muted">Trade the plan. Study the outcome.</p>
         </div>
       </div>
-      <div className="flex gap-2"><Link className="btn-secondary" to="/accounts">Accounts Center</Link><button className="btn-secondary" onClick={()=>setCsvModal(true)} disabled={!accountId}><Upload size={16}/><span className="hidden sm:inline">Import CSV</span></button><button className="btn-primary" onClick={()=>{setEditing(null);setTradeModal(true);}} disabled={!accountId}><Plus size={17}/> Add trade</button></div>
+      <div className="flex gap-2"><Link className="btn-secondary" to="/accounts">Accounts Center</Link>{updating&&<span className="self-center text-xs text-muted">Updating…</span>}<button className="btn-secondary" title={blockedMessage||''} onClick={()=>setCsvModal(true)} disabled={!canTrade||updating}><Upload size={16}/><span className="hidden sm:inline">Import CSV</span></button><button className="btn-primary" title={blockedMessage||''} onClick={()=>{setEditing(null);setTradeModal(true);}} disabled={!canTrade||updating}><Plus size={17}/> Add trade</button></div>
     </div></header>
     <main className="mx-auto max-w-[1700px] space-y-5 px-5 py-7 lg:px-8">
       <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -137,7 +142,7 @@ export default function Dashboard() {
         {account&&<button className="btn-secondary px-3" onClick={()=>setAccountSettings(true)} title="Account settings"><Settings size={17}/><span className="hidden sm:inline">Settings</span></button>}
       </section>
       {!account?<section className="card flex min-h-80 flex-col items-center justify-center p-8 text-center"><WalletCards className="text-lime" size={42}/><h3 className="mt-5 text-xl font-semibold">No active trading account</h3><p className="mt-2 max-w-md text-sm text-muted">Create or select an account from Accounts Center.</p><Link className="btn-primary mt-5" to="/accounts"><Plus size={17}/> Open Accounts Center</Link></section>:<>
-        {account.accountType==='FUNDED'&&<><AccountOverview account={account} phases={phases}/><div className="flex items-center gap-3"><div className="min-w-0 flex-1"><PhaseTabs phases={phases} value={phaseId} onChange={(id)=>{setPhaseId(id);setFilters((current)=>({...current,page:1}));}}/></div><button className="btn-secondary shrink-0" onClick={addPhase}><Plus size={16}/> Add phase</button></div><PhaseOverview phase={phase} currency={account.currency} onSettings={()=>setPhaseSettings(true)}/></>}
+        {account.accountType==='FUNDED'&&<><AccountOverview account={account} phases={phases}/><div className="min-w-0"><PhaseTabs phases={phases} value={phaseId} onChange={(id)=>{setPhaseId(id);setFilters((current)=>({...current,page:1}));}}/></div><PhaseOverview phase={phase} currency={account.currency} onSettings={()=>setPhaseSettings(true)}/></>}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{cards.map(([label,value,detail])=><article className="card p-5" key={label}><p className="text-xs uppercase tracking-wider text-muted">{label}</p><p className="mt-3 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-2 text-xs text-muted">{detail}</p></article>)}</section>
         <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(360px,1fr)]"><BalanceChart data={history} currency={account.currency} loading={!stats} scaleKey={`${accountId}-${Object.values(filters).join('|')}`}/><MarketsTradedChart accountId={accountId} phaseId={phaseId} filters={filters} selectedMarket={filters.market} onMarketSelect={(market)=>setFilters((current)=>({...current,market,page:1}))} currency={account.currency} refreshKey={marketRefreshKey}/></div>
         <div className="pt-2"><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-xl font-semibold">Trade journal</h3><p className="mt-1 text-sm text-muted">Search, filter, sort, and inspect every execution.</p></div>{selectedIds.size>0&&<button className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500" onClick={()=>setConfirm({type:'bulk'})}><Trash2 size={16}/> Delete selected ({selectedIds.size})</button>}</div><TradeFilters filters={filters} setFilters={setFilters} options={filterOptions}/></div>
@@ -147,8 +152,8 @@ export default function Dashboard() {
     <AccountModal open={accountSettings} account={account} onClose={()=>setAccountSettings(false)} onSave={saveAccount} onDelete={()=>setConfirm({type:'account',item:account})} busy={busy}/>
     <TradeFormModal open={tradeModal} trade={editing} onClose={()=>{setTradeModal(false);setEditing(null);}} onSave={saveTrade} busy={busy} libraryOptions={filterOptions}/>
     <TradeViewModal trade={viewing} currency={account?.currency} onClose={()=>setViewing(null)} onImage={setImage} onDeleteScreenshot={deleteScreenshot}/>
-    <CsvImportModal open={csvModal} accountId={accountId} account={account} phaseId={phaseId} onClose={()=>setCsvModal(false)} onImported={refreshAll} notify={notify}/>
-    <PhaseSettingsModal phase={phase} open={phaseSettings} onClose={()=>setPhaseSettings(false)} onSave={savePhase} onAction={phaseAction} onDelete={()=>setConfirm({type:'phase',item:phase})} busy={busy}/>
+    <CsvImportModal open={csvModal} accountId={accountId} account={account} phaseId={phaseId} onClose={()=>setCsvModal(false)} onImported={refreshJournalData} notify={notify}/>
+    <PhaseSettingsModal phase={phase} open={phaseSettings} onClose={()=>setPhaseSettings(false)} onSave={savePhase} onArchive={()=>setConfirm({type:'phaseAction',action:'archive',item:phase})} onDelete={()=>setConfirm({type:'phase',item:phase})} busy={busy}/>
     <ConfirmModal isOpen={!!confirm} {...confirmationDetails} isLoading={busy} onConfirm={executeDelete} onCancel={()=>setConfirm(null)}/>
     <Modal open={!!image} onClose={()=>setImage(null)} title="Screenshot preview" wide>{image&&<img src={image} className="mx-auto max-h-[72vh] rounded-xl object-contain" alt="Trade screenshot"/>}</Modal>
     <Toast toast={toast} onClose={()=>setToast(null)}/>

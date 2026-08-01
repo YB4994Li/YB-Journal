@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { manualTradeAnalytics } from './tradeCalculationService.js';
+import { assertTradingAllowed, reconcilePhase, reconcileRealAccount } from './lifecycleService.js';
 import { normalizeSymbol } from './symbolNormalizationService.js';
 import { ensureStrategy, normalizeStrategyKey, normalizeTimeframe } from './tradingLibraryService.js';
 
@@ -110,15 +111,16 @@ export async function listTradeIds(accountId, query) {
 
 export async function createTrade(accountId, data) {
   return prisma.$transaction(async (tx) => {
-    const account = await tx.account.findUnique({ where: { id: accountId }, select: { id: true, accountType: true, currency: true, initialCapital: true, breakEvenThresholdPercent:true } });
+    const account = await tx.account.findUnique({ where: { id: accountId }, select: { id: true, accountType: true, currency: true, initialCapital: true } });
     if (!account) throw new ApiError(404, 'Account not found');
     const phaseId = data.phaseId == null || data.phaseId === '' ? null : Number(data.phaseId);
     if (account.accountType === 'FUNDED' && !phaseId) throw new ApiError(422, 'phaseId is required for funded account trades');
     let phase=null;
     if (phaseId) {
-      phase = await tx.accountPhase.findFirst({ where: { id: phaseId, accountId }, select: { id: true,initialBalance:true,breakEvenThresholdPercent:true } });
+      phase = await tx.accountPhase.findFirst({ where: { id: phaseId, accountId }, select: { id: true,initialBalance:true } });
       if (!phase) throw new ApiError(422, 'Trade phase must belong to the selected account');
     }
+    await assertTradingAllowed(tx,{accountId,phaseId});
     const tradeNumber = await nextTradeNumber(accountId, tx);
     const normalized = normalizeTrade(data);
     const strategy=data.strategyId?await tx.strategy.findUnique({where:{id:Number(data.strategyId)}}):await ensureStrategy(tx,normalized.strategyName);
@@ -128,9 +130,10 @@ export async function createTrade(accountId, data) {
     const balanceBeforeTrade = data.balanceBeforeTrade || (phaseId
       ? (await tx.accountPhase.findUnique({ where: { id: phaseId }, select: { currentBalance: true } }))?.currentBalance
       : Number(account.initialCapital) + Number((await tx.trade.aggregate({ where: { accountId, phaseId: null }, _sum: { profitLoss: true } }))._sum.profitLoss || 0));
-    Object.assign(normalized, { balanceBeforeTrade: String(balanceBeforeTrade), ...manualTradeAnalytics({ ...normalized, manualRiskProvided: data.riskAmount !== '' && data.riskAmount != null }, { initialCapital:Number(phase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(phase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent) }) });
+    Object.assign(normalized, { balanceBeforeTrade: String(balanceBeforeTrade), ...manualTradeAnalytics({ ...normalized, manualRiskProvided: data.riskAmount !== '' && data.riskAmount != null }) });
     for (const field of decimalFields) if (normalized[field] != null) normalized[field] = String(normalized[field]);
     const trade = await tx.trade.create({ data: { ...normalized, accountId, phaseId, tradeNumber },include:{strategy:{select:{id:true,name:true,isArchived:true}}} });
+    phaseId ? await reconcilePhase(tx,phaseId) : await reconcileRealAccount(tx,accountId);
     return serializeTrade(trade);
   }, { isolationLevel: 'Serializable' });
 }
