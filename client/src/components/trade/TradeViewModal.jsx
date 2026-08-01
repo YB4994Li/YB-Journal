@@ -6,7 +6,7 @@ import { assetUrl } from '../../api/client.js';
 export default function TradeViewModal({ trade, currency, onClose, onImage, onDeleteScreenshot }) {
   if (!trade) return null;
   const entries = [
-    ['Strategy',trade.strategyName || '-'],['Import source',trade.importSource],['Market',trade.market],['Date',shortDate(trade.tradeDate)],
+    ['Strategy',trade.strategyName || '-'],['Market',trade.market],['Date',shortDate(trade.tradeDate)],
     ['Session',trade.session || '—'],['Timeframe',trade.timeframe],['Direction',trade.direction],['Entry',number(trade.entryPrice)],
     ['Stop loss',number(trade.stopLoss)],['Take profit',number(trade.takeProfit)],['Lot size',number(trade.lotSize)],
     ['Planned RR',number(trade.plannedRROverride)],

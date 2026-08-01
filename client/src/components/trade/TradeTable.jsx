@@ -4,7 +4,7 @@ import { assetUrl } from '../../api/client.js';
 import { money, number, shortDate } from '../../utils/format.js';
 
 const columns = [
-  ['tradeNumber','#'],['strategyName','Strategy'],['importSource','Source'],['market','Market'],['tradeDate','Date'],['session','Session'],['timeframe','Timeframe'],
+  ['tradeNumber','#'],['strategyName','Strategy'],['market','Market'],['tradeDate','Date'],['session','Session'],['timeframe','Timeframe'],
   ['direction','Direction'],['entryPrice','Entry'],['stopLoss','Stop'],['takeProfit','Target'],['lotSize','Lot'],['plannedRR','Planned RR'],
   ['realizedRMultiple','Realized R'],['exitPrice','Exit'],['riskAmount','Risk Amount'],['riskPercentage','Risk %'],['result','Result'],['profitLoss','Profit / Loss'],
   ['screenshot','Screenshot'],['emotion','Emotion']
@@ -47,16 +47,16 @@ export default function TradeTable({ data, loading, error, filters, setFilters, 
       <button className="btn-secondary py-1.5" disabled={selectingAll || !data.pagination?.total} onClick={onSelectAllFiltered}>{selectingAll ? 'Selecting…' : `Select all ${data.pagination?.total || 0} filtered trades`}</button>
     </div>
     <div className="scrollbar overflow-x-auto">
-      <table className="min-w-[2150px] w-full text-left text-sm">
+      <table className="min-w-[2050px] w-full text-left text-sm">
         <thead className="sticky top-0 z-10 bg-[#171d27] text-xs uppercase tracking-wider text-muted"><tr>
           <th className="px-4 py-3"><input ref={selectAllRef} type="checkbox" aria-label="Select all visible trades" checked={allVisibleSelected} onChange={(e) => onToggleVisible(visibleIds, e.target.checked)}/></th>
           {columns.map(([key,label]) => <th key={key} className="whitespace-nowrap px-4 py-3"><button className="inline-flex items-center gap-1 hover:text-white" onClick={() => sort(key)}>{label}{filters.sortBy === key && (filters.sortOrder === 'asc' ? <ArrowUp size={12}/> : <ArrowDown size={12}/>)}</button></th>)}
           <th className="sticky right-0 bg-[#171d27] px-4 py-3">Actions</th>
         </tr></thead>
         <tbody className="divide-y divide-line">
-          {loading ? <tr><td colSpan={21} className="py-20 text-center text-muted">Loading journal…</td></tr>
-          : error ? <tr><td colSpan={21} className="py-20 text-center text-rose-400">{error}</td></tr>
-          : !data.items?.length ? <tr><td colSpan={21} className="py-20 text-center text-muted">No trades match your journal filters.</td></tr>
+          {loading ? <tr><td colSpan={22} className="py-20 text-center text-muted">Loading journal…</td></tr>
+          : error ? <tr><td colSpan={22} className="py-20 text-center text-rose-400">{error}</td></tr>
+          : !data.items?.length ? <tr><td colSpan={22} className="py-20 text-center text-muted">No trades match your journal filters.</td></tr>
           : data.items.map((trade) => <tr key={trade.id} className="hover:bg-white/[.025]">
             <td className="px-4 py-3"><input type="checkbox" aria-label={`Select trade ${trade.tradeNumber}`} checked={selectedIds.has(trade.id)} onChange={(e) => onToggleTrade(trade.id, e.target.checked)}/></td>
             {columns.map(([key]) => <td key={key} className="whitespace-nowrap px-4 py-3 text-slate-300">{display(trade,key)}</td>)}
