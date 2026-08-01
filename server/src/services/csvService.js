@@ -5,7 +5,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { nextTradeNumber, normalizeTrade, serializeTrade } from './tradeService.js';
 import { autoSessionFields } from './sessionService.js';
 import { recalculateJournalHistory } from './journalBalanceService.js';
-import { calculateTradeAnalytics, reconstructRealizedBalances } from './tradeCalculationService.js';
+import { manualTradeAnalytics, reconstructRealizedBalances } from './tradeCalculationService.js';
 import { normalizeMarketSymbol } from './marketAnalyticsService.js';
 import { ensureStrategy } from './tradingLibraryService.js';
 
@@ -149,11 +149,7 @@ export function validateCsvRow(row, index, options = {}) {
 
   const normalized = normalizeTrade(data);
   const calculationContext = options.calculationContext || {};
-  Object.assign(normalized, calculateTradeAnalytics(normalized, {
-    ...calculationContext,
-    instrumentSpecification: calculationContext.instrumentSpecifications?.get(normalized.market)
-      || calculationContext.instrumentSpecification
-  }));
+  Object.assign(normalized, manualTradeAnalytics({ ...normalized, manualRiskProvided: data.riskAmount !== '' && data.riskAmount != null }, calculationContext));
   return { rowNumber: index + 2, valid: errors.length === 0, data: normalized, errors };
 }
 
@@ -250,12 +246,12 @@ export function parseCsv(buffer,calculationContext={}) {
       Object.assign(row.data, {
         balanceBeforeTrade: String(item.balanceBeforeTrade),
         balanceAfterTrade: String(item.balanceAfterTrade),
-        ...calculateTradeAnalytics(
+        ...manualTradeAnalytics(
           { ...row.data, balanceBeforeTrade: item.balanceBeforeTrade, profitLoss: item.netProfitLoss },
           {
             ...calculationContext,
             balanceBeforeTrade: item.balanceBeforeTrade,
-            instrumentSpecification: calculationContext.instrumentSpecifications?.get(row.data.market)
+            initialCapital: calculationContext.initialCapital
           }
         )
       });
@@ -317,7 +313,7 @@ export async function importRows(accountId, rows, sourceSummary = {}, requestedP
       }
       if (key) seen.add(key);
       const balanceBeforeTrade = balanceMap.get(rowIndex);
-      const analytics = calculateTradeAnalytics({ ...row.data,resultSource:row.data.resultSource||'AUTO', balanceBeforeTrade }, { accountCurrency: account.currency,initialCapital:Number(destinationPhase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(destinationPhase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent) });
+      const analytics = manualTradeAnalytics({ ...row.data,resultSource:row.data.resultSource||'AUTO' }, { initialCapital:Number(destinationPhase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(destinationPhase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent) });
       const strategy=await ensureStrategy(tx,row.data.strategyName);
       created.push(await tx.trade.create({ data: { ...row.data, ...analytics, strategyId:strategy?.id||null, strategyName:null, balanceBeforeTrade: String(balanceBeforeTrade), accountId, phaseId, tradeNumber: number++ },include:{strategy:{select:{id:true,name:true,isArchived:true}}} }));
     }
@@ -337,11 +333,6 @@ export async function importRows(accountId, rows, sourceSummary = {}, requestedP
     where: { id: { in: result.trades.map((trade) => trade.id) } },
     include: { strategy: { select: { id: true, name: true, isArchived: true } } }
   }).then((trades) => trades.map(serializeTrade));
-  const importedIds = new Set(result.trades.map((trade) => trade.id));
-  const importedHistory = history.filter((item) => importedIds.has(item.trade.id));
-  result.summary.tradesWithCalculatedRisk = importedHistory.filter((item) => ['CALCULATED', 'MANUAL'].includes(item.analytics.riskCalculationStatus)).length;
-  result.summary.tradesMissingSpecifications = importedHistory.filter((item) => item.analytics.riskCalculationError === 'MISSING_INSTRUMENT_SPECIFICATION').length;
-  result.summary.tradesMissingStopLoss = importedHistory.filter((item) => item.analytics.riskCalculationError === 'MISSING_STOP_LOSS').length;
-  result.summary.tradesMissingConversionRates = importedHistory.filter((item) => item.analytics.riskCalculationError === 'MISSING_CONVERSION_RATE').length;
+  result.summary.riskCalculationsDisabled = true;
   return result;
 }

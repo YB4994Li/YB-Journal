@@ -11,7 +11,6 @@
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
     "db:check": "node src/utils/checkDatabase.js",
-    "trades:recalculate": "node scripts/recalculateTradeAnalytics.js",
     "check": "node --check src/server.js",
     "test": "node --test"
   },

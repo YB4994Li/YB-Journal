@@ -4,7 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { createTrade, listTradeIds, listTrades, nextTradeNumber, normalizeTrade, serializeTrade } from '../services/tradeService.js';
 import { removeScreenshot } from '../utils/files.js';
 import { recalculateJournalHistory } from '../services/journalBalanceService.js';
-import { calculateTradeAnalytics } from '../services/tradeCalculationService.js';
+import { manualTradeAnalytics } from '../services/tradeCalculationService.js';
 import { ensureStrategy } from '../services/tradingLibraryService.js';
 
 async function findTrade(id) {
@@ -40,7 +40,7 @@ export async function update(req, res) {
   normalized.strategyId=strategy?.id||null;
   normalized.strategyName=null;
   const context=phaseId?await prisma.accountPhase.findUnique({where:{id:phaseId},select:{initialBalance:true,breakEvenThresholdPercent:true,account:{select:{currency:true}}}}):await prisma.account.findUnique({where:{id:existing.accountId},select:{initialCapital:true,breakEvenThresholdPercent:true,currency:true}});
-  Object.assign(normalized, calculateTradeAnalytics(normalized, { balanceBeforeTrade: normalized.balanceBeforeTrade,accountCurrency:context.account?.currency??context.currency,initialCapital:Number(context.initialBalance??context.initialCapital),breakEvenThresholdPercent:Number(context.breakEvenThresholdPercent) }));
+  Object.assign(normalized, manualTradeAnalytics({ ...normalized, manualRiskProvided: Object.hasOwn(req.body, 'riskAmount') && req.body.riskAmount !== '' && req.body.riskAmount != null }, { initialCapital:Number(context.initialBalance??context.initialCapital),breakEvenThresholdPercent:Number(context.breakEvenThresholdPercent) }));
   const trade = await prisma.trade.update({ where: { id: existing.id }, data: { ...normalized, phaseId },include:{strategy:{select:{id:true,name:true,isArchived:true}}} });
   await recalculateJournalHistory(existing.accountId, phaseId);
   if (existing.phaseId !== phaseId) await recalculateJournalHistory(existing.accountId, existing.phaseId);

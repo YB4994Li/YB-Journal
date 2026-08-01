@@ -1,10 +1,8 @@
 import { PrismaClient } from '@prisma/client';
-import { seedInstrumentSpecifications } from './instrumentSeedData.js';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const instrumentCount = await seedInstrumentSpecifications(prisma);
   const accountCount = await prisma.account.count();
   if (!accountCount) {
     await prisma.account.create({
@@ -15,7 +13,7 @@ async function main() {
       }
     });
   }
-  console.log(`Seeded or updated ${instrumentCount} instrument specifications.`);
+  console.log('Database seed completed.');
 }
 
 main()

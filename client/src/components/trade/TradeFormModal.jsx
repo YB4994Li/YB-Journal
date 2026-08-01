@@ -80,8 +80,7 @@ export default function TradeFormModal({ open, trade, onClose, onSave, busy, lib
                 : <input className="field" required={required} type={type} min={key === 'riskAmount' ? '0' : undefined} step={type === 'number' ? 'any' : undefined} value={form[key] ?? ''} onChange={(event) => change(key, event.target.value)}/>}
         </div>)}
         <div className="sm:col-span-2 lg:col-span-4 rounded-xl border border-line bg-panel-2 p-3 text-xs text-muted">
-          Planned RR, realized R, and risk percentage are calculated by the server. Realized R requires a positive risk amount. Lot size alone is never used to estimate risk.
-          {trade?.calculationWarnings?.length ? <ul className="mt-2 list-disc pl-5 text-amber-300">{trade.calculationWarnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : null}
+          Risk amount, planned RR, and risk percentage are optional manual journal fields. The journal does not estimate risk or Realized R automatically.
         </div>
         <div className="sm:col-span-2"><label className="label">Screenshot</label><input className="field file:mr-3 file:rounded file:border-0 file:bg-lime file:px-3 file:py-1 file:text-xs file:font-semibold file:text-black" type="file" accept=".png,.jpg,.jpeg,.webp" onChange={(event) => setScreenshot(event.target.files[0] || null)}/><p className="mt-1 text-xs text-muted">PNG, JPG, JPEG or WEBP. Maximum configured server size is 5 MB.</p></div>
         <div className="sm:col-span-2"><label className="label">Emotion / notes</label><textarea className="field min-h-24 resize-y" maxLength="5000" value={form.emotion ?? ''} onChange={(event) => change('emotion', event.target.value)}/></div>

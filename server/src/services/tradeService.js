@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
-import { calculateTradeAnalytics } from './tradeCalculationService.js';
+import { manualTradeAnalytics } from './tradeCalculationService.js';
 import { normalizeSymbol } from './symbolNormalizationService.js';
 import { ensureStrategy, normalizeStrategyKey, normalizeTimeframe } from './tradingLibraryService.js';
 
@@ -44,6 +44,12 @@ export function serializeTrade(trade) {
   const output = { ...trade };
   if(output.strategy)output.strategyName=output.strategy.name;
   for (const field of decimalFields) if (output[field] != null) output[field] = Number(output[field]);
+  output.plannedRR = null;
+  output.realizedRMultiple = null;
+  output.riskPercentage = null;
+  if (output.riskCalculationStatus !== 'MANUAL') output.riskAmount = null;
+  output.calculationWarnings = [];
+  output.riskCalculationError = null;
   if (output.balanceAfterTrade == null) output.balanceAfterTrade = output.balanceBeforeTrade == null ? null : Number((output.balanceBeforeTrade + output.profitLoss).toFixed(2));
   return output;
 }
@@ -122,7 +128,7 @@ export async function createTrade(accountId, data) {
     const balanceBeforeTrade = data.balanceBeforeTrade || (phaseId
       ? (await tx.accountPhase.findUnique({ where: { id: phaseId }, select: { currentBalance: true } }))?.currentBalance
       : Number(account.initialCapital) + Number((await tx.trade.aggregate({ where: { accountId, phaseId: null }, _sum: { profitLoss: true } }))._sum.profitLoss || 0));
-    Object.assign(normalized, { balanceBeforeTrade: String(balanceBeforeTrade), ...calculateTradeAnalytics({ ...normalized, balanceBeforeTrade }, { accountCurrency: account.currency,initialCapital:Number(phase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(phase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent) }) });
+    Object.assign(normalized, { balanceBeforeTrade: String(balanceBeforeTrade), ...manualTradeAnalytics({ ...normalized, manualRiskProvided: data.riskAmount !== '' && data.riskAmount != null }, { initialCapital:Number(phase?.initialBalance??account.initialCapital),breakEvenThresholdPercent:Number(phase?.breakEvenThresholdPercent??account.breakEvenThresholdPercent) }) });
     for (const field of decimalFields) if (normalized[field] != null) normalized[field] = String(normalized[field]);
     const trade = await tx.trade.create({ data: { ...normalized, accountId, phaseId, tradeNumber },include:{strategy:{select:{id:true,name:true,isArchived:true}}} });
     return serializeTrade(trade);

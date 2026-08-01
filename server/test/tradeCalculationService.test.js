@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   breakEvenThresholdAmount,
-  calculateTradeAnalytics,
+  manualTradeAnalytics,
   classifyTradeResult,
   reconstructRealizedBalances
 } from '../src/services/tradeCalculationService.js';
@@ -21,37 +21,25 @@ test('break-even classification uses inclusive boundaries', () => {
 });
 
 test('manual result override remains unchanged', () => {
-  const result = calculateTradeAnalytics({ profitLoss: 100, result: 'LOSS', resultSource: 'MANUAL' }, context);
+  const result = manualTradeAnalytics({ profitLoss: 100, result: 'LOSS', resultSource: 'MANUAL' }, context);
   assert.equal(result.result, 'LOSS');
   assert.equal(result.resultSource, 'MANUAL');
 });
 
-test('calculates BUY and SELL planned RR', () => {
-  assert.equal(calculateTradeAnalytics({ direction: 'BUY', entryPrice: 100, stopLoss: 95, takeProfit: 110 }, context).plannedRR, 2);
-  assert.equal(calculateTradeAnalytics({ direction: 'SELL', entryPrice: 100, stopLoss: 105, takeProfit: 90 }, context).plannedRR, 2);
-});
-
-test('rejects invalid BUY and SELL planned-RR geometry', () => {
-  assert.equal(calculateTradeAnalytics({ direction: 'BUY', entryPrice: 100, stopLoss: 105, takeProfit: 110 }, context).plannedRR, null);
-  assert.equal(calculateTradeAnalytics({ direction: 'BUY', entryPrice: 100, stopLoss: 95, takeProfit: 90 }, context).plannedRR, null);
-  assert.equal(calculateTradeAnalytics({ direction: 'SELL', entryPrice: 100, stopLoss: 95, takeProfit: 90 }, context).plannedRR, null);
-  assert.equal(calculateTradeAnalytics({ direction: 'SELL', entryPrice: 100, stopLoss: 105, takeProfit: 110 }, context).plannedRR, null);
-});
-
-test('calculates realized R from broker P&L divided by reliable risk amount', () => {
-  assert.equal(calculateTradeAnalytics({ profitLoss: 150, riskAmount: 100 }, context).realizedRMultiple, 1.5);
-  assert.equal(calculateTradeAnalytics({ profitLoss: -50, riskAmount: 100 }, context).realizedRMultiple, -0.5);
-});
-
-test('missing instrument metadata returns null risk values', () => {
-  const result = calculateTradeAnalytics({ market: 'XAUUSD', entryPrice: 2000, stopLoss: 1995, lotSize: 1, profitLoss: 10 }, context);
+test('automatic risk, RR, and Realized R calculations stay disabled', () => {
+  const result = manualTradeAnalytics({ market: 'XAUUSD', entryPrice: 2000, stopLoss: 1995, takeProfit: 2010, lotSize: 1, profitLoss: 10 }, context);
+  assert.equal(result.plannedRR, null);
   assert.equal(result.riskAmount, null);
   assert.equal(result.riskPercentage, null);
   assert.equal(result.realizedRMultiple, null);
 });
 
-test('calculates risk percentage from balance before trade', () => {
-  assert.equal(calculateTradeAnalytics({ riskAmount: 200, balanceBeforeTrade: 8000 }, context).riskPercentage, 2.5);
+test('explicit manual risk is preserved without deriving other values', () => {
+  const result = manualTradeAnalytics({ riskAmount: 200, manualRiskProvided: true, profitLoss: 100 }, context);
+  assert.equal(result.riskAmount, 200);
+  assert.equal(result.riskPercentage, null);
+  assert.equal(result.realizedRMultiple, null);
+  assert.equal(result.riskCalculationStatus, 'MANUAL');
 });
 
 test('reconstructs realized balances chronologically by close time', () => {

@@ -33,10 +33,10 @@ export default function TradeTable({ data, loading, error, filters, setFilters, 
     if (key === 'screenshot') return trade.screenshotPath ? <button onClick={() => onImage(assetUrl(trade.screenshotPath))} className="rounded p-2 text-lime hover:bg-lime/10"><Image size={16}/></button> : '—';
     if (key === 'emotion') return <span className="block max-w-52 truncate" title={trade.emotion}>{trade.emotion || '—'}</span>;
     if (key === 'strategyName') return trade.strategyName || '-';
-    if (key === 'plannedRR') return <span title={trade.calculationWarnings?.join('\n')}>{number(trade.plannedRROverride ?? trade.plannedRR)}{trade.plannedRROverride == null && trade.plannedRR != null && <span className="ml-1 rounded bg-sky-500/10 px-1 text-[10px] text-sky-300">AUTO</span>}</span>;
-    if (key === 'riskAmount') return <span title={trade.riskCalculationError ? trade.calculationWarnings?.join('\n') : ''}>{trade.riskAmount == null ? '—' : money(trade.riskAmount,currency)}{trade.riskCalculationStatus === 'CALCULATED' && <span className="ml-1 rounded bg-sky-500/10 px-1 text-[10px] text-sky-300">AUTO</span>}</span>;
-    if (key === 'riskPercentage') return <span title={trade.calculationWarnings?.join('\n')}>{(trade.riskPercentageOverride ?? trade.riskPercentage) == null ? '—' : `${number(trade.riskPercentageOverride ?? trade.riskPercentage)}%`}{trade.riskPercentageOverride == null && trade.riskPercentage != null && <span className="ml-1 rounded bg-sky-500/10 px-1 text-[10px] text-sky-300">AUTO</span>}</span>;
-    if (key === 'realizedRMultiple') return <span title={trade.calculationWarnings?.join('\n')}>{trade.realizedRMultiple == null ? '—' : `${number(trade.realizedRMultiple)}R`}</span>;
+    if (key === 'plannedRR') return number(trade.plannedRROverride);
+    if (key === 'riskAmount') return trade.riskAmount == null ? '—' : money(trade.riskAmount,currency);
+    if (key === 'riskPercentage') return trade.riskPercentageOverride == null ? '—' : `${number(trade.riskPercentageOverride)}%`;
+    if (key === 'realizedRMultiple') return '—';
     if (['entryPrice','stopLoss','takeProfit','lotSize','exitPrice'].includes(key)) return number(trade[key]);
     return trade[key] || '—';
   };
