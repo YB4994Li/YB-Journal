@@ -64,9 +64,10 @@ export function buildTradeWhere(accountId, query) {
   const where = { accountId };
   if (query.phaseId != null && query.phaseId !== '') where.phaseId = Number(query.phaseId);
   if(query.strategy)where.strategy={normalizedKey:normalizeStrategyKey(query.strategy)};
+  if(query.strategyId)where.strategyId=query.strategyId==='unassigned'?null:Number(query.strategyId);
   const mapping = { market: 'market', session: 'session', timeframe: 'timeframe', direction: 'direction', result: 'result' };
   for (const [queryKey, field] of Object.entries(mapping)) {
-    if (query[queryKey]) where[field] = ['direction', 'result'].includes(field)
+    if (query[queryKey]) where[field] = query[queryKey] === 'unassigned' ? null : ['direction', 'result'].includes(field)
       ? query[queryKey].toUpperCase().replace(/[\s-]+/g, '_')
       : { equals: query[queryKey], mode: 'insensitive' };
   }
@@ -96,16 +97,24 @@ export async function listTrades(accountId, query) {
   const sortBy = allowedSortFields.has(query.sortBy) ? query.sortBy : 'tradeDate';
   const sortOrder = query.sortOrder === 'asc' ? 'asc' : 'desc';
   const where = buildTradeWhere(accountId, query);
-  const [items, total] = await prisma.$transaction([
-    prisma.trade.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: [{ [sortBy]: sortOrder }, { tradeNumber: 'desc' }],include:{strategy:{select:{id:true,name:true,isArchived:true}}} }),
-    prisma.trade.count({ where })
-  ]);
+  let items, total;
+  if (query.weekday !== undefined && query.weekday !== '') {
+    const all = await prisma.trade.findMany({ where, orderBy: [{ [sortBy]: sortOrder }, { tradeNumber: 'desc' }], include: { strategy: { select: { id: true, name: true, isArchived: true } } } });
+    const matching = all.filter((trade) => new Date(trade.tradeDate).getUTCDay() === Number(query.weekday));
+    total = matching.length; items = matching.slice((page - 1) * limit, page * limit);
+  } else {
+    [items, total] = await prisma.$transaction([
+      prisma.trade.findMany({ where, skip: (page - 1) * limit, take: limit, orderBy: [{ [sortBy]: sortOrder }, { tradeNumber: 'desc' }],include:{strategy:{select:{id:true,name:true,isArchived:true}}} }),
+      prisma.trade.count({ where })
+    ]);
+  }
   return { items: items.map(serializeTrade), pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } };
 }
 
 export async function listTradeIds(accountId, query) {
   const where = buildTradeWhere(accountId, query);
-  const items = await prisma.trade.findMany({ where, select: { id: true }, orderBy: { id: 'asc' } });
+  let items = await prisma.trade.findMany({ where, select: { id: true, ...(query.weekday !== undefined && query.weekday !== '' ? { tradeDate: true } : {}) }, orderBy: { id: 'asc' } });
+  if (query.weekday !== undefined && query.weekday !== '') items = items.filter((trade) => new Date(trade.tradeDate).getUTCDay() === Number(query.weekday));
   return items.map(({ id }) => id);
 }
 

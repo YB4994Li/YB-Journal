@@ -19,8 +19,9 @@ import PhaseTabs from '../components/phase/PhaseTabs.jsx';
 import AccountOverview from '../components/phase/AccountOverview.jsx';
 import PhaseOverview from '../components/phase/PhaseOverview.jsx';
 import PhaseSettingsModal from '../components/phase/PhaseSettingsModal.jsx';
+import { journalFiltersFromSearch } from '../utils/performanceNavigation.js';
 
-const initialFilters = { page:1, limit:Number(localStorage.getItem('journalPageSize')||10), search:'', market:'', strategy:'', session:'', timeframe:'', direction:'', result:'', startDate:'', endDate:'', sortBy:'tradeDate', sortOrder:'desc' };
+const initialFilters = journalFiltersFromSearch(window.location.search, Number(localStorage.getItem('journalPageSize') || 10));
 
 export default function Dashboard() {
   const [accounts,setAccounts]=useState([]), [accountId,setAccountId]=useState(null);
@@ -134,7 +135,7 @@ export default function Dashboard() {
           <p className="text-xs text-muted">Trade the plan. Study the outcome.</p>
         </div>
       </div>
-      <div className="flex gap-2"><Link className="btn-secondary" to="/accounts">Accounts Center</Link>{updating&&<span className="self-center text-xs text-muted">Updating…</span>}<button className="btn-secondary" title={blockedMessage||''} onClick={()=>setCsvModal(true)} disabled={!canTrade||updating}><Upload size={16}/><span className="hidden sm:inline">Import CSV</span></button><button className="btn-primary" title={blockedMessage||''} onClick={()=>{setEditing(null);setTradeModal(true);}} disabled={!canTrade||updating}><Plus size={17}/> Add trade</button></div>
+      <div className="flex gap-2"><Link className="btn-secondary" to={`/performance?${new URLSearchParams({...(accountId?{accountId}:{}),...(phaseId?{phaseId}:{})})}`}>Performance</Link><Link className="btn-secondary" to="/accounts">Accounts Center</Link>{updating&&<span className="self-center text-xs text-muted">Updating…</span>}<button className="btn-secondary" title={blockedMessage||''} onClick={()=>setCsvModal(true)} disabled={!canTrade||updating}><Upload size={16}/><span className="hidden sm:inline">Import CSV</span></button><button className="btn-primary" title={blockedMessage||''} onClick={()=>{setEditing(null);setTradeModal(true);}} disabled={!canTrade||updating}><Plus size={17}/> Add trade</button></div>
     </div></header>
     <main className="mx-auto max-w-[1700px] space-y-5 px-5 py-7 lg:px-8">
       <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">

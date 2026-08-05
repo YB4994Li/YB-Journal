@@ -1,7 +1,7 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 export default function TradeFilters({ filters, setFilters, options = {markets:[],strategies:[],timeframes:[]} }) {
-  const set = (key, value) => setFilters((current) => ({ ...current, [key]: value, page: 1 }));
-  const clear = () => setFilters({ page: 1, limit: filters.limit, search: '', market: '', strategy: '', session: '', timeframe: '', direction: '', result: '', startDate: '', endDate: '', sortBy: 'tradeDate', sortOrder: 'desc' });
+  const set = (key, value) => setFilters((current) => ({ ...current, [key]: value, ...(key === 'strategy' ? { strategyId: '' } : {}), page: 1 }));
+  const clear = () => setFilters({ page: 1, limit: filters.limit, search: '', market: '', strategy: '', strategyId: '', session: '', timeframe: '', direction: '', weekday: '', result: '', startDate: '', endDate: '', sortBy: 'tradeDate', sortOrder: 'desc' });
   return <div className="card p-4">
     <div className="flex flex-col gap-3 lg:flex-row">
       <div className="relative flex-1"><Search className="absolute left-3 top-2.5 text-muted" size={18}/><input className="field pl-10" placeholder="Search trade #, strategy, market or notes…" value={filters.search} onChange={(e) => set('search',e.target.value)}/></div>

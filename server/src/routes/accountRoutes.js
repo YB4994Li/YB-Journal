@@ -21,6 +21,7 @@ router.post('/:id/archive', idParam(), validate, asyncHandler(controller.archive
 router.post('/:id/restore', idParam(), validate, asyncHandler(controller.restoreAccount));
 router.post('/:id/reactivate', idParam(), validate, asyncHandler(controller.reactivateAccount));
 router.get('/:id/statistics', idParam(), validate, asyncHandler(controller.statistics));
+router.get('/:id/performance', idParam(), validate, asyncHandler(controller.performance));
 router.get('/:id/balance-history', idParam(), validate, asyncHandler(controller.balanceHistory));
 router.get('/:id/markets', idParam(), validate, asyncHandler(controller.markets));
 router.get('/:id/analytics/markets', idParam(), validate, asyncHandler(controller.marketsAnalytics));

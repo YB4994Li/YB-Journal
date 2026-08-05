@@ -7,6 +7,7 @@ import { recalculateJournalHistory } from '../services/journalBalanceService.js'
 import { realizedLifecycle, reconcileFundedAccountLifecycle, reconcileRealAccount } from '../services/lifecycleService.js';
 import { deleteAccountWithJournal } from '../services/accountDeletionService.js';
 import { removeScreenshot } from '../utils/files.js';
+import { getPerformance } from '../services/performanceService.js';
 
 const decimalKeys = ['initialCapital', 'accountSize', 'initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage'];
 const serialize = (value) => {
@@ -111,4 +112,7 @@ export async function marketsAnalytics(req, res) {
 }
 export async function filterOptions(req,res){
   success(res,await getJournalFilterOptions(Number(req.params.id),req.query),'Journal filter options retrieved');
+}
+export async function performance(req,res){
+  success(res,await getPerformance(Number(req.params.id),req.query),'Performance retrieved successfully');
 }
