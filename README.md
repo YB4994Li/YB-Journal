@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-
 # Trading Journal
 
 Trading Journal is a standalone full-stack application designed to help traders manage multiple trading accounts, import trading history, organize trades, and review performance through structured statistics and visualizations.

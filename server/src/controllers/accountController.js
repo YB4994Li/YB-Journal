@@ -5,6 +5,8 @@ import { getStatistics, getBalanceHistory } from '../services/statisticsService.
 import { getJournalFilterOptions, getMarketOptions, getMarketsAnalytics } from '../services/marketAnalyticsService.js';
 import { recalculateJournalHistory } from '../services/journalBalanceService.js';
 import { realizedLifecycle, reconcileFundedAccountLifecycle, reconcileRealAccount } from '../services/lifecycleService.js';
+import { deleteAccountWithJournal } from '../services/accountDeletionService.js';
+import { removeScreenshot } from '../utils/files.js';
 
 const decimalKeys = ['initialCapital', 'accountSize', 'initialBalance', 'currentBalance', 'profitTargetPercentage', 'maximumLossPercentage', 'dailyLossLimitPercentage'];
 const serialize = (value) => {
@@ -91,7 +93,8 @@ export async function reactivateAccount(req,res){
   success(res,serialize(await prisma.account.update({where:{id},data:{status:'ACTIVE'}})),'Account reactivated');
 }
 export async function deleteAccount(req, res) {
-  await prisma.account.delete({ where: { id: Number(req.params.accountId ?? req.params.id) } });
+  const result = await deleteAccountWithJournal(prisma, Number(req.params.accountId ?? req.params.id));
+  await Promise.all(result.screenshots.map(removeScreenshot));
   success(res, null, 'Account, phases, and related trades deleted successfully');
 }
 export async function statistics(req, res) {

@@ -15,6 +15,9 @@ export function errorHandler(error, req, res, next) {
   if (error.code === 'P2025') {
     return res.status(404).json({ success: false, message: 'Record not found', errors: [] });
   }
+  if (error.code === 'P2003') {
+    return res.status(409).json({ success: false, message: `Account deletion was blocked by related data${error.meta?.field_name ? ` (${error.meta.field_name})` : ''}. No data was deleted.`, errors: [] });
+  }
   const status = error.statusCode || 500;
   res.status(status).json({
     success: false,
