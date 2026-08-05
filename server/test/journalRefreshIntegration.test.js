@@ -9,7 +9,7 @@ test('all journal trade mutation paths use the centralized lifecycle refresh',as
   const source=await readFile(dashboardPath,'utf8');
   assert.match(source,/const refreshJournalData=useCallback/);
   assert.match(source,/await loadAccounts\(\)/);
-  assert.match(source,/Promise\.all\(\[refreshSummary\(accountId,phaseId\),loadTrades/);
+  assert.match(source,/Promise\.all\(\[refreshSummary\(accountId,phaseId,filters\),loadTrades/);
   assert.equal((source.match(/await refreshJournalData\(\)/g)||[]).length>=4,true);
   assert.match(source,/onImported=\{refreshJournalData\}/);
 });

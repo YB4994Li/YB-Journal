@@ -43,8 +43,8 @@ export default function Dashboard() {
     const requested=Number(new URLSearchParams(window.location.search).get('accountId'));
     setAccountId((current)=>data.data.some((a)=>a.id===requested)?requested:data.data.some((a)=>a.id===current)?current:(data.data.find((a)=>a.status!=='ARCHIVED')?.id||null));
   },[]);
-  const refreshSummary=useCallback(async(id,currentPhaseId)=>{
-    if(!id)return; const params=currentPhaseId?{phaseId:currentPhaseId}:{};const [s,h]=await Promise.all([api.get(`/accounts/${id}/statistics`,{params}),api.get(`/accounts/${id}/balance-history`,{params})]);
+  const refreshSummary=useCallback(async(id,currentPhaseId,currentFilters={})=>{
+    if(!id)return; const params={...(currentPhaseId?{phaseId:currentPhaseId}:{}),startDate:currentFilters.startDate||undefined,endDate:currentFilters.endDate||undefined};const [s,h]=await Promise.all([api.get(`/accounts/${id}/statistics`,{params}),api.get(`/accounts/${id}/balance-history`,{params})]);
     setStats(s.data.data);setHistory(h.data.data);
   },[]);
   const loadTrades=useCallback(async(id,current,currentPhaseId)=>{
@@ -57,13 +57,13 @@ export default function Dashboard() {
     setUpdating(true);
     try{
       await loadAccounts();
-      await Promise.all([refreshSummary(accountId,phaseId),loadTrades(accountId,filters,phaseId)]);
+      await Promise.all([refreshSummary(accountId,phaseId,filters),loadTrades(accountId,filters,phaseId)]);
       setMarketRefreshKey((value)=>value+1);
     }finally{setUpdating(false);}
   },[accountId,phaseId,filters,loadAccounts,refreshSummary,loadTrades]);
   useEffect(()=>{(async()=>{try{await loadAccounts();}catch(e){notify(errorMessage(e),'error');}finally{setLoading(false);}})();},[loadAccounts]);
   useEffect(()=>{if(!account)return;if(account.accountType==='FUNDED'){const requested=Number(new URLSearchParams(window.location.search).get('phaseId')),next=account.phases.find((item)=>item.id===requested)||account.phases.find((item)=>item.status==='ACTIVE')||account.phases[0];setPhaseId((current)=>account.phases.some((item)=>item.id===current)?current:next?.id||null);}else setPhaseId(null);},[account]);
-  useEffect(()=>{if(accountId&&(!account||account.accountType==='REAL'||phaseId)){refreshSummary(accountId,phaseId).catch((e)=>notify(errorMessage(e),'error'));}},[accountId,phaseId,account?.accountType,refreshSummary]);
+  useEffect(()=>{if(accountId&&(!account||account.accountType==='REAL'||phaseId)){refreshSummary(accountId,phaseId,filters).catch((e)=>notify(errorMessage(e),'error'));}},[accountId,phaseId,account?.accountType,filters.startDate,filters.endDate,refreshSummary]);
   useEffect(()=>{if(accountId&&(!account||account.accountType==='REAL'||phaseId))loadTrades(accountId,filters,phaseId);},[accountId,phaseId,account?.accountType,filters.page,filters.limit,filters.market,filters.strategy,filters.session,filters.timeframe,filters.direction,filters.result,filters.startDate,filters.endDate,filters.sortBy,filters.sortOrder,debouncedSearch]);
   useEffect(()=>{setSelectedIds(new Set());},[accountId,phaseId,filters.market,filters.strategy,filters.session,filters.timeframe,filters.direction,filters.result,filters.startDate,filters.endDate,debouncedSearch]);
   useEffect(()=>{if(!accountId||account?.accountType==='FUNDED'&&!phaseId)return;let active=true;const params={...(phaseId?{phaseId}:{}),dateFrom:filters.startDate||undefined,dateTo:filters.endDate||undefined};api.get(`/accounts/${accountId}/journal/filter-options`,{params}).then(({data})=>{if(!active)return;const options=data.data;setFilterOptions(options);setFilters((current)=>({...current,...(current.market&&!options.markets.some((item)=>item.value===current.market)?{market:''}:{}),...(current.strategy&&!options.strategies.some((item)=>item.normalizedKey===current.strategy.trim().toLowerCase())?{strategy:''}:{}),...(current.timeframe&&!options.timeframes.some((item)=>item.value===current.timeframe)?{timeframe:''}:{}),page:1}));}).catch((e)=>notify(errorMessage(e),'error'));return()=>{active=false;};},[accountId,phaseId,account?.accountType,filters.startDate,filters.endDate,marketRefreshKey]);

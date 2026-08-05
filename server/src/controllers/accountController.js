@@ -98,10 +98,10 @@ export async function deleteAccount(req, res) {
   success(res, null, 'Account, phases, and related trades deleted successfully');
 }
 export async function statistics(req, res) {
-  success(res, await getStatistics(Number(req.params.id), req.query.phaseId ? Number(req.query.phaseId) : null), 'Statistics retrieved successfully');
+  success(res, await getStatistics(Number(req.params.id), req.query.phaseId ? Number(req.query.phaseId) : null, req.query), 'Statistics retrieved successfully');
 }
 export async function balanceHistory(req, res) {
-  success(res, await getBalanceHistory(Number(req.params.id), req.query.phaseId ? Number(req.query.phaseId) : null), 'Balance history retrieved successfully');
+  success(res, await getBalanceHistory(Number(req.params.id), req.query.phaseId ? Number(req.query.phaseId) : null, req.query), 'Balance history retrieved successfully');
 }
 export async function markets(req, res) {
   success(res, await getMarketOptions(Number(req.params.id), req.query), 'Markets retrieved successfully');
