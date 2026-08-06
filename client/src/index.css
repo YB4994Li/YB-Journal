@@ -38,3 +38,10 @@
     gap: 1rem;
   }
 }
+.strategy-radar-layout { display: grid; grid-template-columns: minmax(0,1fr); gap: 1rem; align-items: center; margin-top: .75rem; }
+@media (min-width: 768px) {
+  .strategy-radar-layout { grid-template-columns: minmax(0,2fr) minmax(290px,1fr); }
+}
+.border-t.p-5 > .grid.gap-2.sm\:grid-cols-2 {
+  grid-template-columns: minmax(0,1fr);
+}
