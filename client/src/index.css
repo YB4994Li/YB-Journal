@@ -18,3 +18,23 @@
 }
 .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
 .scrollbar::-webkit-scrollbar-thumb { background: #333c49; border-radius: 8px; }
+.recharts-default-tooltip,
+.performance-chart-tooltip {
+  background: #11161e !important;
+  border: 1px solid #303947 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.38) !important;
+  color: #d8e0eb !important;
+}
+.recharts-tooltip-label { color: #f8fafc !important; font-weight: 600; margin-bottom: 6px !important; }
+.recharts-tooltip-item { color: #aab4c3 !important; padding-block: 2px !important; }
+.grid.grid-cols-1.gap-4.xl\:grid-cols-12 { align-items: flex-start; }
+.card.min-h-\[360px\] { min-height: 0 !important; }
+@media (min-width: 1024px) {
+  .grid.items-start.gap-4.xl\:grid-cols-2 {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    align-items: start;
+    gap: 1rem;
+  }
+}

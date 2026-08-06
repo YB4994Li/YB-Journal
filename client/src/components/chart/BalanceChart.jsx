@@ -6,7 +6,7 @@ import { calculateBalanceDomain } from '../../utils/chartScale.js';
 function CustomTooltip({ active, payload, currency }) {
   if (!active || !payload?.length) return null;
   const item = payload[0].payload;
-  return <div className="rounded-xl border border-line bg-[#0d1118] p-3 text-xs shadow-2xl">
+  return <div className="performance-chart-tooltip rounded-xl border border-line bg-panel p-3 text-xs shadow-2xl">
     <p className="font-semibold text-white">{item.label}</p><p className="mt-1 text-muted">{shortDate(item.date)}</p>
     <p className={`mt-2 ${item.profitLoss > 0 ? 'text-lime' : item.profitLoss < 0 ? 'text-rose-400' : 'text-muted'}`}>P&L: {money(item.profitLoss,currency)}</p>
     <p className="mt-1 text-white">Balance: {money(item.balance,currency)}</p>
@@ -14,8 +14,8 @@ function CustomTooltip({ active, payload, currency }) {
 }
 export default function BalanceChart({ data, currency, loading, scaleKey }) {
   const yDomain = useMemo(() => calculateBalanceDomain(data), [data, scaleKey]);
-  return <section className="card min-h-[360px] p-5">
-    <div className="mb-5"><p className="text-sm font-semibold">Balance progression</p><p className="mt-1 text-xs text-muted">Initial capital plus chronological realized P&L</p></div>
+  return <section className="card p-4">
+    <div className="mb-3"><p className="text-sm font-semibold">Balance progression</p><p className="mt-0.5 text-xs text-muted">Initial capital plus chronological realized P&L</p></div>
     {loading ? <div className="flex h-64 items-center justify-center text-muted">Loading chart…</div> : <ResponsiveContainer width="100%" height={280}>
       <AreaChart data={data} margin={{ top: 10, right: 10, left: 12, bottom: 0 }}>
         <defs><linearGradient id="balance" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c7f36b" stopOpacity={0.38}/><stop offset="55%" stopColor="#c7f36b" stopOpacity={0.12}/><stop offset="100%" stopColor="#c7f36b" stopOpacity={0}/></linearGradient><filter id="balanceGlow" x="-20%" y="-30%" width="140%" height="160%"><feDropShadow stdDeviation="3" floodColor="#c7f36b" floodOpacity=".3"/></filter></defs>
