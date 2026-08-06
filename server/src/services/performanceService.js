@@ -13,6 +13,9 @@ export function calculatePerformanceMetrics(trades) {
   const breakEven = trades.length - wins.length - losses.length;
   const grossProfit = wins.reduce((sum, trade) => sum + pnl(trade), 0);
   const grossLoss = Math.abs(losses.reduce((sum, trade) => sum + pnl(trade), 0));
+  const values = trades.map(pnl), mean = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+  const meanAbsolute = values.length ? values.reduce((sum, value) => sum + Math.abs(value), 0) / values.length : 0;
+  const deviation = values.length ? Math.sqrt(values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length) : 0;
   const ordered = [...trades].sort((a, b) => pnl(a) - pnl(b));
   const tradeSummary = (trade) => trade ? { id: trade.id, tradeNumber: trade.tradeNumber, profitLoss: round(pnl(trade)), market: trade.market, tradeDate: trade.tradeDate } : null;
   return {
@@ -24,6 +27,8 @@ export function calculatePerformanceMetrics(trades) {
     winRate: wins.length + losses.length ? round(wins.length / (wins.length + losses.length) * 100) : null,
     averageWin: wins.length ? round(grossProfit / wins.length) : null,
     averageLoss: losses.length ? round(-grossLoss / losses.length) : null,
+    // 100 means identical trade P&L; dispersion relative to mean absolute P&L lowers the score.
+    consistency: meanAbsolute ? round(100 / (1 + deviation / meanAbsolute)) : values.length ? 100 : 0,
     profitFactor: grossLoss ? round(grossProfit / grossLoss, 4) : grossProfit > 0 ? 'INFINITY' : null,
     bestTrade: tradeSummary(ordered.at(-1)),
     worstTrade: tradeSummary(ordered[0])

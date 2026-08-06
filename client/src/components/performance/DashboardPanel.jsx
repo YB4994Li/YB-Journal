@@ -1,0 +1,1 @@
+export default function DashboardPanel({title,subtitle,children,className=''}){return <section className={`card min-w-0 p-5 ${className}`}><div className="mb-4"><h3 className="text-sm font-semibold">{title}</h3>{subtitle&&<p className="mt-1 text-xs text-muted">{subtitle}</p>}</div>{children}</section>}
