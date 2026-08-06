@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   const loadAccounts=useCallback(async()=>{
     const {data}=await api.get('/accounts'); setAccounts(data.data);
-    const requested=Number(new URLSearchParams(window.location.search).get('accountId'));
+    const requested=Number(new URLSearchParams(window.location.search).get('accountId')||localStorage.getItem('activeAccountId'));
     setAccountId((current)=>data.data.some((a)=>a.id===requested)?requested:data.data.some((a)=>a.id===current)?current:(data.data.find((a)=>a.status!=='ARCHIVED')?.id||null));
   },[]);
   const refreshSummary=useCallback(async(id,currentPhaseId,currentFilters={})=>{
@@ -63,7 +63,9 @@ export default function Dashboard() {
     }finally{setUpdating(false);}
   },[accountId,phaseId,filters,loadAccounts,refreshSummary,loadTrades]);
   useEffect(()=>{(async()=>{try{await loadAccounts();}catch(e){notify(errorMessage(e),'error');}finally{setLoading(false);}})();},[loadAccounts]);
-  useEffect(()=>{if(!account)return;if(account.accountType==='FUNDED'){const requested=Number(new URLSearchParams(window.location.search).get('phaseId')),next=account.phases.find((item)=>item.id===requested)||account.phases.find((item)=>item.status==='ACTIVE')||account.phases[0];setPhaseId((current)=>account.phases.some((item)=>item.id===current)?current:next?.id||null);}else setPhaseId(null);},[account]);
+  useEffect(()=>{if(!account)return;if(account.accountType==='FUNDED'){const requested=Number(new URLSearchParams(window.location.search).get('phaseId')||localStorage.getItem('activePhaseId')),next=account.phases.find((item)=>item.id===requested)||account.phases.find((item)=>item.status==='ACTIVE')||account.phases[0];setPhaseId((current)=>account.phases.some((item)=>item.id===current)?current:next?.id||null);}else setPhaseId(null);},[account]);
+  useEffect(()=>{if(accountId)localStorage.setItem('activeAccountId',String(accountId));},[accountId]);
+  useEffect(()=>{if(phaseId)localStorage.setItem('activePhaseId',String(phaseId));else if(account?.accountType==='REAL')localStorage.removeItem('activePhaseId');},[phaseId,account?.accountType]);
   useEffect(()=>{if(accountId&&(!account||account.accountType==='REAL'||phaseId)){refreshSummary(accountId,phaseId,filters).catch((e)=>notify(errorMessage(e),'error'));}},[accountId,phaseId,account?.accountType,filters.startDate,filters.endDate,refreshSummary]);
   useEffect(()=>{if(accountId&&(!account||account.accountType==='REAL'||phaseId))loadTrades(accountId,filters,phaseId);},[accountId,phaseId,account?.accountType,filters.page,filters.limit,filters.market,filters.strategy,filters.session,filters.timeframe,filters.direction,filters.result,filters.startDate,filters.endDate,filters.sortBy,filters.sortOrder,debouncedSearch]);
   useEffect(()=>{setSelectedIds(new Set());},[accountId,phaseId,filters.market,filters.strategy,filters.session,filters.timeframe,filters.direction,filters.result,filters.startDate,filters.endDate,debouncedSearch]);
@@ -127,16 +129,7 @@ export default function Dashboard() {
 
   if(loading)return <div className="flex min-h-screen items-center justify-center text-muted">Loading trading journal…</div>;
   return <div className="min-h-screen bg-[radial-gradient(circle_at_20%_0%,rgba(199,243,107,.05),transparent_24%)]">
-    <header className="border-b border-line bg-ink/80 backdrop-blur"><div className="mx-auto flex max-w-[1700px] items-center justify-between px-5 py-4 lg:px-8">
-      <div className="flex items-center gap-3">
-        <img src="/yb-journal-logo.png" alt="YB-Journal logo" className="h-16 w-16 shrink-0 object-contain" />
-        <div>
-          <h1 className="font-semibold tracking-tight"><span className="text-lime">YB</span><span className="text-white">-Journal</span></h1>
-          <p className="text-xs text-muted">Trade the plan. Study the outcome.</p>
-        </div>
-      </div>
-      <div className="flex gap-2"><Link className="btn-secondary" to={`/performance?${new URLSearchParams({...(accountId?{accountId}:{}),...(phaseId?{phaseId}:{})})}`}>Performance</Link><Link className="btn-secondary" to="/accounts">Accounts Center</Link>{updating&&<span className="self-center text-xs text-muted">Updating…</span>}<button className="btn-secondary" title={blockedMessage||''} onClick={()=>setCsvModal(true)} disabled={!canTrade||updating}><Upload size={16}/><span className="hidden sm:inline">Import CSV</span></button><button className="btn-primary" title={blockedMessage||''} onClick={()=>{setEditing(null);setTradeModal(true);}} disabled={!canTrade||updating}><Plus size={17}/> Add trade</button></div>
-    </div></header>
+    <div className="flex h-16 flex-wrap items-center justify-end gap-2 border-b border-line bg-ink/80 px-5 lg:px-8">{updating&&<span className="self-center text-xs text-muted">Updating…</span>}<button className="btn-secondary" title={blockedMessage||''} onClick={()=>setCsvModal(true)} disabled={!canTrade||updating}><Upload size={16}/><span className="hidden sm:inline">Import CSV</span></button><button className="btn-primary" title={blockedMessage||''} onClick={()=>{setEditing(null);setTradeModal(true);}} disabled={!canTrade||updating}><Plus size={17}/> Add trade</button></div>
     <main className="mx-auto max-w-[1700px] space-y-5 px-5 py-7 lg:px-8">
       <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div><p className="text-xs font-medium uppercase tracking-[.2em] text-lime">Overview</p><h2 className="mt-2 text-3xl font-semibold tracking-tight">Trading performance</h2><p className="mt-2 text-sm text-muted">Review execution, risk, and realized results.</p></div>

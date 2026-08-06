@@ -3,7 +3,9 @@ import Dashboard from './pages/Dashboard.jsx';
 import AccountsCenter from './pages/AccountsCenter.jsx';
 import TradingLibrary from './pages/TradingLibrary.jsx';
 import PerformanceCenter from './pages/PerformanceCenter.jsx';
+import ComingSoon from './pages/ComingSoon.jsx';
+import AppLayout from './components/layout/AppLayout.jsx';
 
 export default function App() {
-  return <Switch><Route exact path={["/", "/journal"]} component={Dashboard}/><Route exact path="/performance" component={PerformanceCenter}/><Route exact path="/accounts" component={AccountsCenter}/><Route path="/accounts/library" component={TradingLibrary}/><Redirect from="/trading-library" to="/accounts/library"/><Redirect to="/"/></Switch>;
+  return <AppLayout><Switch><Redirect exact from="/" to="/journal"/><Route exact path="/journal" component={Dashboard}/><Route exact path="/performance" component={PerformanceCenter}/><Route exact path="/calendar" render={() => <ComingSoon name="Trading Calendar"/>}/><Route exact path="/daily-notes" render={() => <ComingSoon name="Daily Notes"/>}/><Route exact path="/accounts" component={AccountsCenter}/><Route path="/accounts/library" component={TradingLibrary}/><Route exact path="/trades/:tradeId" render={() => <ComingSoon name="Trade Details"/>}/><Route exact path="/settings" render={() => <ComingSoon name="Settings"/>}/><Redirect from="/trading-library" to="/accounts/library"/><Redirect to="/journal"/></Switch></AppLayout>;
 }
