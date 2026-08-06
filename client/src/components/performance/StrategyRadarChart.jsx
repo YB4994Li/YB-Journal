@@ -4,7 +4,7 @@ import { radarSeries } from '../../utils/performanceCharts.js';
 import { money,number } from '../../utils/format.js';
 import { seriesColor } from './chartPalette.js';
 
-export default function StrategyRadarChart({rows,currency}){
+export default function StrategyRadarChart({rows,currency,entityLabel='strategy'}){
   const eligible=rows.filter((row)=>row.key!=='unassigned');
   const [selected,setSelected]=useState(()=>eligible.slice(0,2).map((row)=>String(row.key)));
   useEffect(()=>setSelected((current)=>{const valid=current.filter((key)=>eligible.some((row)=>String(row.key)===key));return valid.length?valid.slice(0,2):eligible.slice(0,2).map((row)=>String(row.key))}),[rows]);
