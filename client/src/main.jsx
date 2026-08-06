@@ -3,7 +3,8 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App.jsx';
 import './index.css';
+import { ActiveAccountProvider } from './context/ActiveAccountContext.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode><BrowserRouter><App /></BrowserRouter></React.StrictMode>
+  <React.StrictMode><BrowserRouter><ActiveAccountProvider><App /></ActiveAccountProvider></BrowserRouter></React.StrictMode>
 );
