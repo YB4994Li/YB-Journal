@@ -18,14 +18,28 @@
 }
 .scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
 .scrollbar::-webkit-scrollbar-thumb { background: #333c49; border-radius: 8px; }
+.performance-scrollbar,.performance-center .overflow-x-auto { scrollbar-width: thin; scrollbar-color: #536174 #111720; }
+.performance-scrollbar::-webkit-scrollbar,.performance-center .overflow-x-auto::-webkit-scrollbar { width: 7px; height: 7px; }
+.performance-scrollbar::-webkit-scrollbar-track,.performance-center .overflow-x-auto::-webkit-scrollbar-track { background: #111720; border: 1px solid #27313e; border-radius: 999px; }
+.performance-scrollbar::-webkit-scrollbar-thumb,.performance-center .overflow-x-auto::-webkit-scrollbar-thumb { background: #536174; border: 1px solid #111720; border-radius: 999px; box-shadow: 0 0 5px rgba(96,165,250,.12); }
+.performance-scrollbar::-webkit-scrollbar-thumb:hover,.performance-center .overflow-x-auto::-webkit-scrollbar-thumb:hover { background: #6b7a8e; }
+.performance-scrollbar::-webkit-scrollbar-button,.performance-center .overflow-x-auto::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 .recharts-default-tooltip,
 .performance-chart-tooltip {
-  background: #11161e !important;
-  border: 1px solid #303947 !important;
+  min-width: 132px;
+  padding: 12px;
+  background: rgba(17,22,30,.98) !important;
+  border: 1px solid color-mix(in srgb,var(--tooltip-accent,#64748b) 42%,#303947) !important;
   border-radius: 12px !important;
-  box-shadow: 0 14px 34px rgba(0,0,0,.38) !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.38),0 0 14px color-mix(in srgb,var(--tooltip-accent,#64748b) 12%,transparent) !important;
   color: #d8e0eb !important;
+  font-size: 12px;
+  animation: performance-tooltip-in 120ms ease-out;
 }
+.performance-chart-tooltip__title { margin: 0 0 7px; font-weight: 700; color: #f8fafc; }
+.performance-chart-tooltip__row { display: flex; justify-content: space-between; gap: 16px; padding-top: 4px; color: #94a3b8; }
+.performance-chart-tooltip__row strong { color: #e5eaf1; font-weight: 600; }
+@keyframes performance-tooltip-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 .recharts-tooltip-label { color: #f8fafc !important; font-weight: 600; margin-bottom: 6px !important; }
 .recharts-tooltip-item { color: #aab4c3 !important; padding-block: 2px !important; }
 .grid.grid-cols-1.gap-4.xl\:grid-cols-12 { align-items: flex-start; }

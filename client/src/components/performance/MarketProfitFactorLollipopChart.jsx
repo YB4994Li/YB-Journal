@@ -3,18 +3,18 @@ import DashboardPanel from './DashboardPanel.jsx';
 import { profitFactorChartData } from '../../utils/performanceCharts.js';
 import { money, number, profitFactor } from '../../utils/format.js';
 import { seriesColor } from './chartPalette.js';
+import PerformanceChartTooltip from './PerformanceChartTooltip.jsx';
 
 function LollipopTooltip({active,payload,currency,entityLabel}){
   if(!active||!payload?.length)return null;
   const row=payload[0].payload;
   const color=seriesColor(row.name);
-  return <div className="rounded-xl border bg-[#0d1118] p-3 text-xs shadow-2xl" style={{borderColor:`${color}55`,boxShadow:`0 0 16px ${color}18`}}>
-    <p className="font-semibold" style={{color}}>{row.name}</p>
+  return <PerformanceChartTooltip active={active} payload={payload} title={row.name} color={color}>
     <p className="mt-2" style={{color}}>Profit Factor: {profitFactor(row.profitFactor)}</p>
     <p className="mt-1 text-muted">Trades: {number(row.totalTrades,0)}</p>
     <p className={row.netProfitLoss<0?'mt-1 text-rose-400':'mt-1 text-muted'}>Net P&amp;L: {money(row.netProfitLoss,currency)}</p>
     <p className="mt-1 text-muted">Win Rate: {number(row.winRate||0,2)}%</p>
-  </div>;
+  </PerformanceChartTooltip>;
 }
 
 export default function MarketProfitFactorLollipopChart({rows,currency,onSelect,entityLabel='Market'}){
