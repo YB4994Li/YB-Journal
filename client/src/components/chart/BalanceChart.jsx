@@ -2,15 +2,16 @@ import { ResponsiveContainer, AreaChart, Area, CartesianGrid, XAxis, YAxis, Tool
 import { useMemo } from 'react';
 import { money, shortDate } from '../../utils/format.js';
 import { calculateBalanceDomain } from '../../utils/chartScale.js';
+import PerformanceChartTooltip from '../performance/PerformanceChartTooltip.jsx';
 
 function CustomTooltip({ active, payload, currency }) {
   if (!active || !payload?.length) return null;
   const item = payload[0].payload;
-  return <div className="performance-chart-tooltip rounded-xl border border-line bg-panel p-3 text-xs shadow-2xl">
-    <p className="font-semibold text-white">{item.label}</p><p className="mt-1 text-muted">{shortDate(item.date)}</p>
+  return <PerformanceChartTooltip active={active} payload={payload} title={item.label} color="#c7f36b">
+    <p className="mt-1 text-muted">{shortDate(item.date)}</p>
     <p className={`mt-2 ${item.profitLoss > 0 ? 'text-lime' : item.profitLoss < 0 ? 'text-rose-400' : 'text-muted'}`}>P&L: {money(item.profitLoss,currency)}</p>
     <p className="mt-1 text-white">Balance: {money(item.balance,currency)}</p>
-  </div>;
+  </PerformanceChartTooltip>;
 }
 export default function BalanceChart({ data, currency, loading, scaleKey }) {
   const yDomain = useMemo(() => calculateBalanceDomain(data), [data, scaleKey]);

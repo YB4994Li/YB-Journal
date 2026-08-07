@@ -4,8 +4,9 @@ import { api } from '../../api/client.js';
 import { money, number } from '../../utils/format.js';
 import { toggleMarketSelection } from '../../utils/marketSelection.js';
 import { seriesColor } from '../../utils/chartColors.js';
+import PerformanceChartTooltip from '../performance/PerformanceChartTooltip.jsx';
 
-function ChartTooltip({active,payload,currency}){if(!active||!payload?.length)return null;const item=payload[0].payload;return <div className="rounded-xl border border-line bg-[#0d1118] p-3 text-xs shadow-2xl"><p className="font-semibold text-white">{item.market}</p><p className="mt-1">{item.tradeCount} trades</p><p>{number(item.percentage,2)}%</p><p className="mt-2">Net P&amp;L: {money(item.totalProfitLoss,currency)}</p><p>Win rate: {number(item.winRate,2)}%</p></div>}
+function ChartTooltip({active,payload,currency}){if(!active||!payload?.length)return null;const item=payload[0].payload,color=seriesColor(item.market);return <PerformanceChartTooltip active={active} payload={payload} title={item.market} color={color}><p className="mt-1">{item.tradeCount} trades</p><p>{number(item.percentage,2)}%</p><p className="mt-2">Net P&amp;L: {money(item.totalProfitLoss,currency)}</p><p>Win rate: {number(item.winRate,2)}%</p></PerformanceChartTooltip>}
 
 export default function MarketsTradedChart({accountId,phaseId,filters,selectedMarket,onMarketSelect,currency,refreshKey}){
   const [data,setData]=useState({totalTrades:0,markets:[]}),[loading,setLoading]=useState(true),[metric,setMetric]=useState('tradeCount');

@@ -2,9 +2,10 @@ import { Bar, BarChart, CartesianGrid, Cell, LabelList, ReferenceLine, Responsiv
 import { breakdownChartData, CHART_METRICS } from '../../utils/performanceCharts.js';
 import { money, number } from '../../utils/format.js';
 import { seriesColor } from './chartPalette.js';
+import PerformanceChartTooltip from './PerformanceChartTooltip.jsx';
 
 const display=(value,metric,currency)=>metric==='netProfitLoss'?money(value,currency):metric==='winRate'?`${number(value,2)}%`:number(value,metric==='totalTrades'?0:2);
-function ChartTooltip({active,payload,metric,currency}){if(!active||!payload?.length)return null;const row=payload[0].payload;return <div className="rounded-xl border border-line bg-[#0d1118] p-3 text-xs shadow-2xl"><p className="font-semibold text-white">{row.name}</p><p className="mt-2 text-lime">{CHART_METRICS[metric].label}: {display(row.chartValue,metric,currency)}</p><p className="mt-1 text-muted">Trades: {row.totalTrades}</p><p className={row.netProfitLoss<0?'mt-1 text-rose-400':'mt-1 text-muted'}>Net P&L: {money(row.netProfitLoss,currency)}</p><p className="mt-1 text-muted">Win rate: {row.winRate==null?'—':`${number(row.winRate,2)}%`}</p><p className="mt-1 text-muted">Profit factor: {row.profitFactor==='INFINITY'?'∞':number(row.profitFactor||0,2)}</p></div>}
+function ChartTooltip({active,payload,metric,currency}){if(!active||!payload?.length)return null;const row=payload[0].payload,color=seriesColor(row.name);return <PerformanceChartTooltip active={active} payload={payload} title={row.name} color={color}><p className="mt-2" style={{color}}>{CHART_METRICS[metric].label}: {display(row.chartValue,metric,currency)}</p><p className="mt-1 text-muted">Trades: {row.totalTrades}</p><p className={row.netProfitLoss<0?'mt-1 text-rose-400':'mt-1 text-muted'}>Net P&amp;L: {money(row.netProfitLoss,currency)}</p><p className="mt-1 text-muted">Win rate: {row.winRate==null?'—':`${number(row.winRate,2)}%`}</p><p className="mt-1 text-muted">Profit factor: {row.profitFactor==='INFINITY'?'∞':number(row.profitFactor||0,2)}</p></PerformanceChartTooltip>}
 
 export default function PerformanceBarChart({rows,metric,tab,currency,onSelect}){
   const data=breakdownChartData(rows,metric,tab), minWidth=tab==='directions'?420:Math.max(560,data.length*86);
