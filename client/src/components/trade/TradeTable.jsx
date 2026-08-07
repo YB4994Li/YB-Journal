@@ -27,7 +27,7 @@ export default function TradeTable({ data, loading, error, filters, setFilters, 
     if (key === 'tradeNumber') return `#${trade.tradeNumber}`;
     if (key === 'tradeDate') return shortDate(trade.tradeDate);
     if (key === 'profitLoss') return <span className={trade.profitLoss > 0 ? 'text-lime' : trade.profitLoss < 0 ? 'text-rose-400' : ''}>{money(trade.profitLoss,currency)}</span>;
-    if (key === 'direction') return <span className={`rounded px-2 py-1 text-xs font-semibold ${trade.direction === 'BUY' ? 'bg-sky-500/10 text-sky-400' : 'bg-amber-500/10 text-amber-400'}`}>{trade.direction}</span>;
+    if (key === 'direction') return <span className={`rounded border px-2 py-1 text-xs font-semibold ${trade.direction === 'BUY' ? 'border-lime/25 bg-lime/10 text-lime shadow-[0_0_10px_rgba(199,243,107,.10)]' : 'border-rose-400/25 bg-rose-400/10 text-rose-400 shadow-[0_0_10px_rgba(251,113,133,.10)]'}`}>{trade.direction}</span>;
     if (key === 'result') return <span className={`rounded px-2 py-1 text-xs font-semibold ${trade.result === 'WIN' ? 'bg-lime/10 text-lime' : trade.result === 'LOSS' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-500/10 text-slate-400'}`}>{trade.result?.replace('_',' ')}</span>;
     if (key === 'session') return <span className="inline-flex items-center gap-1.5">{trade.session || '—'}{trade.sessionDetection === 'AUTO' && <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-sky-300">Auto</span>}</span>;
     if (key === 'screenshot') return trade.screenshotPath ? <button onClick={() => onImage(assetUrl(trade.screenshotPath))} className="rounded p-2 text-lime hover:bg-lime/10"><Image size={16}/></button> : '—';
