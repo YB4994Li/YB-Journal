@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma.js';
 import { ApiError } from '../utils/ApiError.js';
 import { reconstructRealizedBalances } from './tradeCalculationService.js';
+import { calculateProfitFactor } from '../utils/profitFactor.js';
 
 const round = (value, digits = 2) => Number(Number(value).toFixed(digits));
 const dayStart = (value) => value ? new Date(`${String(value).slice(0, 10)}T00:00:00.000Z`) : null;
@@ -71,7 +72,7 @@ export async function getStatistics(accountId, phaseId = null, query = {}, db = 
     initialCapital: round(openingBalance), currentBalance: round(openingBalance + net), netProfitLoss: round(net),
     totalTrades: visible.length, winningTrades: wins, losingTrades: losses, breakEvenTrades: breakEven,
     winRate: wins + losses ? round((wins / (wins + losses)) * 100) : 0,
-    profitFactor: grossLoss ? round(grossProfit / grossLoss, 4) : null,
+    profitFactor: calculateProfitFactor(grossProfit, grossLoss),
     expectancy: visible.length ? round(net / visible.length, 2) : null,
     bestTrade: summarize(ordered.at(-1)), worstTrade: summarize(ordered[0])
   };

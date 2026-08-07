@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { filteredBalanceHistory, selectPeriodTrades } from './statisticsService.js';
 import { normalizeMarketSymbol } from './marketAnalyticsService.js';
 import { normalizeTimeframe } from './tradingLibraryService.js';
+import { calculateProfitFactor } from '../utils/profitFactor.js';
 
 const round = (value, digits = 2) => Number(Number(value).toFixed(digits));
 const pnl = (trade) => Number(trade.netProfitLoss ?? trade.profitLoss ?? 0);
@@ -29,7 +30,7 @@ export function calculatePerformanceMetrics(trades) {
     averageLoss: losses.length ? round(-grossLoss / losses.length) : null,
     // 100 means identical trade P&L; dispersion relative to mean absolute P&L lowers the score.
     consistency: meanAbsolute ? round(100 / (1 + deviation / meanAbsolute)) : values.length ? 100 : 0,
-    profitFactor: grossLoss ? round(grossProfit / grossLoss, 4) : grossProfit > 0 ? 'INFINITY' : null,
+    profitFactor: calculateProfitFactor(grossProfit, grossLoss),
     bestTrade: tradeSummary(ordered.at(-1)),
     worstTrade: tradeSummary(ordered[0])
   };

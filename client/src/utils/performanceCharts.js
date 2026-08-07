@@ -5,6 +5,12 @@ const WEEKDAY_ORDER = ['Monday','Tuesday','Wednesday','Thursday','Friday','Satur
 const TIMEFRAME_ORDER = ['M1','M5','M15','M30','H1','H4','D1','W1'];
 export const finiteNumber = (value, fallback = 0) => value === 'INFINITY' ? fallback : Number.isFinite(Number(value)) ? Number(value) : 0;
 
+export function profitFactorChartData(rows = []) {
+  const largestFinite=Math.max(0,...rows.filter((row)=>row.profitFactor!=='INFINITY').map((row)=>finiteNumber(row.profitFactor)));
+  const infinityCap=largestFinite>0?largestFinite*1.1:1;
+  return rows.map((row)=>({...row,value:row.profitFactor==='INFINITY'?infinityCap:finiteNumber(row.profitFactor),infinityLabel:row.profitFactor==='INFINITY'?'∞':''}));
+}
+
 export function orderedBreakdown(rows = [], sort = 'netProfitLoss', tab = '') {
   if (tab === 'weekdays') return [...rows].sort((a,b)=>WEEKDAY_ORDER.indexOf(a.name)-WEEKDAY_ORDER.indexOf(b.name));
   if (tab === 'timeframes') return [...rows].sort((a,b)=>{const ai=TIMEFRAME_ORDER.indexOf(a.name),bi=TIMEFRAME_ORDER.indexOf(b.name);return (ai<0?999:ai)-(bi<0?999:bi)||a.name.localeCompare(b.name)});

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BarChart3, RotateCcw } from 'lucide-react';
 import { useHistory, useLocation } from 'react-router-dom';
 import { api, errorMessage } from '../api/client.js';
-import { money, number } from '../utils/format.js';
+import { money, number, profitFactor as factor } from '../utils/format.js';
 import { BREAKDOWN_BY_TAB, journalDrillDownUrl, PERFORMANCE_TABS, performanceQuery } from '../utils/performanceNavigation.js';
 import BalanceChart from '../components/chart/BalanceChart.jsx';
 import OutcomeDistribution from '../components/performance/OutcomeDistribution.jsx';
@@ -13,7 +13,6 @@ import MissingActiveAccount from '../components/account/MissingActiveAccount.jsx
 import { useActiveAccount } from '../context/ActiveAccountContext.jsx';
 import OverviewDashboard from '../components/performance/OverviewDashboard.jsx';
 
-const factor = (value) => value === 'INFINITY' ? '∞' : value == null ? '—' : number(value, 2);
 const title = (tab) => tab === 'weekdays' ? 'Performance by Day' : tab[0].toUpperCase() + tab.slice(1);
 
 export default function PerformanceCenter() {

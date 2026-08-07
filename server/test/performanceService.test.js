@@ -17,6 +17,7 @@ test('performance formulas exclude break-even from win rate and calculate averag
 
 test('zero-loss profit factor is infinity with profit and unavailable without profit', () => {
   assert.equal(calculatePerformanceMetrics([trade(1, 50)]).profitFactor, 'INFINITY');
+  assert.equal(calculatePerformanceMetrics([trade(1, -50)]).profitFactor, 0);
   assert.equal(calculatePerformanceMetrics([trade(1, 0)]).profitFactor, null);
   assert.equal(calculatePerformanceMetrics([]).profitFactor, null);
 });

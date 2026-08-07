@@ -3,3 +3,4 @@ export const money = (value, currency = 'USD') => new Intl.NumberFormat('en-US',
 }).format(Number(value || 0));
 export const shortDate = (value) => value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—';
 export const number = (value, digits = 4) => value == null || value === '' ? '—' : Number(value).toLocaleString('en-US', { maximumFractionDigits: digits });
+export const profitFactor = (value, digits = 2) => value === 'INFINITY' ? '∞' : value == null ? '—' : number(value, digits);
