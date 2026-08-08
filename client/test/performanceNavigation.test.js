@@ -21,3 +21,8 @@ test('market, session, timeframe, direction, and weekday drill-down parameters a
 test('cleared performance dates produce a full-history query', () => {
   assert.equal(performanceQuery({ tab: 'overview', accountId: 7, from: '', to: '' }), 'accountId=7');
 });
+
+test('trade card drill-down can narrow the journal to one trade number', () => {
+  const url = journalDrillDownUrl({ accountId: 7, phaseId: 22, from: '2026-07-08', to: '2026-07-08', journalFilter: { search: 41 } });
+  assert.equal(journalFiltersFromSearch(url.split('?')[1]).search, '41');
+});

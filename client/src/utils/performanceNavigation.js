@@ -22,5 +22,5 @@ export function journalDrillDownUrl({ accountId, phaseId, from, to, journalFilte
 
 export function journalFiltersFromSearch(search, pageSize = 10) {
   const params = new URLSearchParams(search);
-  return { page: 1, limit: pageSize, search: '', market: params.get('market') || '', strategy: '', strategyId: params.get('strategyId') || '', session: params.get('session') || '', timeframe: params.get('timeframe') || '', direction: params.get('direction') || '', weekday: params.get('weekday') || '', result: '', startDate: params.get('from') || params.get('startDate') || '', endDate: params.get('to') || params.get('endDate') || '', sortBy: 'tradeDate', sortOrder: 'desc' };
+  return { page: 1, limit: pageSize, search: params.get('search') || '', market: params.get('market') || '', strategy: '', strategyId: params.get('strategyId') || '', session: params.get('session') || '', timeframe: params.get('timeframe') || '', direction: params.get('direction') || '', weekday: params.get('weekday') || '', result: '', startDate: params.get('from') || params.get('startDate') || '', endDate: params.get('to') || params.get('endDate') || '', sortBy: 'tradeDate', sortOrder: 'desc' };
 }

@@ -41,6 +41,9 @@
 .performance-chart-tooltip__row strong { color: #e5eaf1; font-weight: 600; }
 .performance-chart-tooltip--portal { position: fixed; z-index: 9999; pointer-events: none; max-width: min(320px,calc(100vw - 16px)); }
 @keyframes performance-tooltip-in { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+@keyframes day-snapshot-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
+.day-snapshot-in { animation: day-snapshot-in 150ms ease-out; }
+@media (prefers-reduced-motion: reduce) { .day-snapshot-in { animation: none; } }
 .recharts-tooltip-label { color: #f8fafc !important; font-weight: 600; margin-bottom: 6px !important; }
 .recharts-tooltip-item { color: #aab4c3 !important; padding-block: 2px !important; }
 .grid.grid-cols-1.gap-4.xl\:grid-cols-12 { align-items: flex-start; }
