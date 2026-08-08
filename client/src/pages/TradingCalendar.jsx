@@ -35,6 +35,12 @@ function calendarData(month,trades){
 
 function MetricCard({label,value,tone}){return <article className="card min-h-24 p-4"><p className="text-xs uppercase tracking-wider text-muted">{label}</p><p className={`mt-2 text-lg font-semibold ${tone==='profit'?'text-lime':tone==='loss'?'text-rose-400':''}`}>{value}</p></article>}
 
+function TradingDayMetric({day,currency}){
+  if(!day)return '—';
+  const date=day.date.toLocaleDateString('en-US',{month:'long',day:'numeric'}),value=`${day.net>0?'+':''}${money(day.net,currency)}`;
+  return <><span className="block text-sm font-medium text-muted">{date}</span><span className={`mt-1 block text-lg font-semibold ${day.net>0?'text-lime':day.net<0?'text-rose-400':'text-slate-300'}`}>{value}</span></>;
+}
+
 function DayTooltip({day,currency}){
   if(!day)return null;
   return <PerformanceChartTooltip active payload={[{payload:day,value:day.net}]} title={day.date.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} color={day.net>0?'#c7f36b':day.net<0?'#fb7185':'#64748b'}>
@@ -53,7 +59,7 @@ export default function TradingCalendar(){
   const move=(offset)=>setMonth((current)=>new Date(current.getFullYear(),current.getMonth()+offset,1));
   const openDay=(day)=>day.trades&&setSelectedDayKey(day.key);
   const journalUrl=(trade)=>journalDrillDownUrl({accountId,phaseId,from:selectedDayKey,to:selectedDayKey,journalFilter:trade?{search:trade.tradeNumber}:{}});
-  const summary=[['Monthly Net P&L',money(monthlyNet,currency),monthlyNet<0?'loss':'profit'],['Trading Days',tradingDays.length],['Winning Days',winningDays.length,'profit'],['Losing Days',losingDays.length,'loss'],['Break-even Days',breakEvenDays.length],['Best Trading Day',bestDay?`${bestDay.day} · ${money(bestDay.net,currency)}`:'—','profit'],['Worst Trading Day',worstDay?`${worstDay.day} · ${money(worstDay.net,currency)}`:'—',worstDay?.net<0?'loss':undefined]];
+  const summary=[['Monthly Net P&L',money(monthlyNet,currency),monthlyNet<0?'loss':'profit'],['Trading Days',tradingDays.length],['Winning Days',winningDays.length,'profit'],['Losing Days',losingDays.length,'loss'],['Break-even Days',breakEvenDays.length],['Best Trading Day',<TradingDayMetric day={bestDay} currency={currency}/>],['Worst Trading Day',<TradingDayMetric day={worstDay} currency={currency}/>]];
   return <main className="mx-auto max-w-[1700px] space-y-5 px-5 py-7 lg:px-8"><ActiveAccountIndicator/>{!accountId?<MissingActiveAccount/>:account?.accountType==='FUNDED'&&!phaseId?<section className="card flex min-h-72 items-center justify-center p-8 text-center text-muted">Select an active funded phase to view its trading calendar.</section>:<>
     <section className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end"><div><p className="text-xs font-medium uppercase tracking-[.2em] text-lime">Monthly analytics</p><h1 className="mt-2 text-3xl font-semibold">Trading Calendar</h1><p className="mt-2 text-sm text-muted">Visual overview of your trading activity across each month.</p></div><div className="card flex items-center justify-between gap-2 p-2"><button className="btn-secondary px-3" onClick={()=>move(-1)} aria-label="Previous month"><ChevronLeft size={17}/><span className="hidden sm:inline">Previous Month</span></button><p className="min-w-36 text-center text-sm font-semibold">{month.toLocaleDateString('en-US',{month:'long',year:'numeric'})}</p><button className="btn-secondary px-3" onClick={()=>move(1)} aria-label="Next month"><span className="hidden sm:inline">Next Month</span><ChevronRight size={17}/></button></div></section>
     {error&&<section className="card border-rose-500/30 p-4 text-sm text-rose-400">{error}</section>}
