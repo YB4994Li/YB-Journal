@@ -29,7 +29,9 @@ function calendarData(month,trades){
   for(const trade of trades){const key=String(trade.tradeDate).slice(0,10);if(!grouped.has(key))grouped.set(key,[]);grouped.get(key).push(trade)}
   const days=Array.from({length:daysInMonth},(_,index)=>{const date=new Date(year,monthIndex,index+1),key=dateKey(date),dayTrades=grouped.get(key)||[];return {date,key,day:index+1,...summarize(dayTrades)}});
   const cells=[...Array.from({length:leading},()=>null),...days];while(cells.length%7)cells.push(null);
-  const weeks=Array.from({length:cells.length/7},(_,index)=>{const weekDays=cells.slice(index*7,index*7+7).filter(Boolean),weekTrades=weekDays.flatMap((day)=>grouped.get(day.key)||[]),summary=summarize(weekTrades),tradingDays=weekDays.filter((day)=>day.trades);return {...summary,index:index+1,days:weekDays,tradingDays:tradingDays.length,bestDay:[...tradingDays].sort((a,b)=>b.net-a.net)[0]||null,worstDay:[...tradingDays].sort((a,b)=>a.net-b.net)[0]||null}});
+  const weekGroups=Array.from({length:cells.length/7},(_,index)=>cells.slice(index*7,index*7+7).filter(Boolean));
+  if(weekGroups.length>5)weekGroups[4]=weekGroups.slice(4).flat();
+  const weeks=weekGroups.slice(0,5).map((weekDays,index)=>{const weekTrades=weekDays.flatMap((day)=>grouped.get(day.key)||[]),summary=summarize(weekTrades),tradingDays=weekDays.filter((day)=>day.trades);return {...summary,index:index+1,days:weekDays,tradingDays:tradingDays.length,bestDay:[...tradingDays].sort((a,b)=>b.net-a.net)[0]||null,worstDay:[...tradingDays].sort((a,b)=>a.net-b.net)[0]||null}});
   return {days,cells,weeks};
 }
 
