@@ -26,8 +26,8 @@ export default function MarketProfitFactorLollipopChart({rows,currency,onSelect,
         <XAxis dataKey="name" stroke="#788495" tick={{fontSize:10,fill:'#a8b2c1'}} tickLine={false}/>
         <YAxis domain={[0,'auto']} stroke="#788495" tick={{fontSize:10,fill:'#a8b2c1'}} tickLine={false}/>
         <Tooltip content={<LollipopTooltip currency={currency} entityLabel={entityLabel}/>}/>
-        <Bar dataKey="value" barSize={2} fillOpacity={.62} isAnimationActive animationDuration={520} animationEasing="ease-out">{data.map((row)=>{const color=seriesColor(row.name);return <Cell key={row.key||row.name} fill={color} style={{filter:`drop-shadow(0 0 2px ${color}55)`}}/>})}</Bar>
-        <Scatter dataKey="value" line={false} shape="circle" isAnimationActive animationDuration={620}>{data.map((row)=>{const color=seriesColor(row.name);return <Cell key={row.key||row.name} fill={color} style={{filter:`drop-shadow(0 0 4px ${color}99)`}}/>})}<LabelList dataKey="infinityLabel" position="top" fill="#c7f36b" fontSize={14} fontWeight={700}/></Scatter>
+        <Bar dataKey="chartProfitFactor" barSize={2} fillOpacity={.62} isAnimationActive animationDuration={520} animationEasing="ease-out">{data.map((row)=>{const color=seriesColor(row.name);return <Cell key={row.key||row.name} fill={color} style={{filter:`drop-shadow(0 0 2px ${color}55)`}}/>})}</Bar>
+        <Scatter dataKey="chartProfitFactor" line={false} shape="circle" isAnimationActive animationDuration={620}>{data.map((row)=>{const color=seriesColor(row.name);return <Cell key={row.key||row.name} fill={color} style={{filter:`drop-shadow(0 0 4px ${color}99)`}}/>})}<LabelList dataKey="infinityLabel" position="top" fill="#c7f36b" fontSize={14} fontWeight={700}/></Scatter>
       </ComposedChart>
     </ResponsiveContainer>}
   </DashboardPanel>;

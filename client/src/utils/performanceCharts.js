@@ -8,7 +8,7 @@ export const finiteNumber = (value, fallback = 0) => value === 'INFINITY' ? fall
 export function profitFactorChartData(rows = []) {
   const largestFinite=Math.max(0,...rows.filter((row)=>row.profitFactor!=='INFINITY').map((row)=>finiteNumber(row.profitFactor)));
   const infinityCap=largestFinite>0?largestFinite*1.1:1;
-  return rows.map((row)=>({...row,value:row.profitFactor==='INFINITY'?infinityCap:finiteNumber(row.profitFactor),infinityLabel:row.profitFactor==='INFINITY'?'∞':''}));
+  return rows.map((row)=>{const isInfiniteProfitFactor=row.profitFactor==='INFINITY';return {...row,rawProfitFactor:row.profitFactor,chartProfitFactor:isInfiniteProfitFactor?infinityCap:finiteNumber(row.profitFactor),isInfiniteProfitFactor,infinityLabel:isInfiniteProfitFactor?'∞':''}});
 }
 
 export function orderedBreakdown(rows = [], sort = 'netProfitLoss', tab = '') {
